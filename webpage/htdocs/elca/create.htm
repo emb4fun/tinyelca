@@ -1,0 +1,318 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html>
+  <head>
+    <meta http-equiv="content-type"     content="text/html;charset=iso-8859-1"/>
+    <meta http-equiv="content-language" content="en"/>
+    <meta http-equiv="pragma"           content="no-cache"/>
+    <title><%sys_longname%></title>
+    <link rel="stylesheet" type="text/css" href="../css/style.css"/>          
+    <script type="text/javascript" src="../js/system.js"></script>
+    <script type="text/javascript" src="../js/elca.js"></script>
+    <script type="text/javascript">
+    <!--
+    
+      function MyCancel1()
+      {
+         document.getElementById("tr1_err").style.display = "none";
+      }
+
+      function MySubmit1()
+      {
+         let ajax;
+         let data;
+         let link;
+
+         document.getElementById("tr1_err").style.display = "none";
+
+         data = JSON.stringify({ csr : document.formular1.text.value });
+         ajax = GetAjaxObject();
+         ajax.open("POST", "/cgi-bin/elca_crtcsr.cgi", true);  
+         ajax.onreadystatechange = function() 
+         {
+            if ((this.readyState == 4) && (this.status == 200))
+            {
+               let jdata = JSON.parse(this.responseText);
+               let err = jdata.err;
+               
+               /* Check for error */   
+               if (err === undefined)               
+               {
+                  link = '/cgi-bin/elca_devcrt.cgi?id=' + jdata.id;
+                  document.getElementById('devcrt').innerHTML = '<a href="' + link + '"' + 'download="device.crt">server</a>';
+                  
+                  let cert   = atob(jdata.cert);
+                  let certca = atob(jdata.certca);
+                  
+                  document.getElementById("tr1").style.display = "none";
+                  document.getElementById("tr2").style.display = "block";
+                  document.getElementById("tr2_cert").innerHTML = cert;
+                  document.getElementById("tr2_certca").innerHTML = certca;
+               } 
+               else
+               {
+                  document.getElementById("tr1_err").style.display = "block";
+                  document.getElementById("tr1_msg").innerHTML = Error2Text(err);
+               }
+            
+            } // if ((this.readyState == 4) && (this.status == 200))
+         } // end ajax.onreadystatechange
+         ajax.send(data);
+      }
+
+      /**************************************************************/
+
+      function Ready()
+      {
+         let islocked = parseInt('<%elca_is_locked%>');
+
+         if (isNaN(islocked)) islocked = 1;
+        
+         if (0 == islocked)
+         {
+            document.getElementById("tr0").style.display = "none";
+            document.getElementById("tr1").style.display = "block";
+            document.getElementById("tr2").style.display = "none";
+         }
+         else
+         {
+            document.getElementById("tr0").style.display = "block";
+            document.getElementById("tr1").style.display = "none";
+            document.getElementById("tr2").style.display = "none";
+         }
+      }
+      
+    -->
+    </script>
+  </head>        
+
+  <body bgcolor="#ffffff" onload="Ready()">
+    <table class="table_body">
+      <tr align="center">
+        <td> 
+        
+          <!-- Header -->
+          <div class="header">
+            <h1><%sys_longname%></h1>
+            <div class="div"></div>
+            <div class="login"><a href="../logout.htm">Logout</a></div>
+            <div class="logo"></div>
+          </div>
+      
+          <!-- Navigation #1 -->
+          <table class="table_navi1">
+            <tr>
+              <td>&nbsp;</td>
+              <td class="main">
+                <ul>
+                  <li class="nb"><a href="../home/index.htm">Home</a></li>
+                  <li class="nm"><a class="active" href="index.htm">ELCA</a></li>
+                  <li class="ne"><a href="../main/index.htm">Maintenance</a></li>
+                </ul>
+              </td>
+              <td>&nbsp;</td>
+            </tr>
+          </table> 
+
+          <!-- Navigation #2, #3 -->
+          <div class="navi2">
+            <ul>
+              <li class="nb"><a href="index.htm">Overview</a></li>
+              <li class="nm"><a href="unlock.htm">Unlock / Lock</a></li>
+              <li class="nm"><a class="active" href="create.htm">Create Certificate</a></li>
+              <li class="nm"><a href="csrdec.htm">CSR Decoder Decoder</a></li>
+              <li class="ne"><a href="crtdec.htm">Certificate Decoder</a></li>
+            </ul>
+            <p><%sys_shortname%></p>
+          </div> 
+          <div class="navi3">
+            <ul>
+              <li><a class="active" href="#">By CSR</a></li>
+            </ul>
+          </div>
+
+
+          <!-- table_row #0 -->
+          <div id="tr0" style="display:none">
+            <table class="table_row">
+              <tr align="center">
+                <td>
+               
+                  <table class="table_variable">
+                    <thead>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>Embedded Local Certificate Authority (ELCA)</td>
+                        <td>&nbsp;</td>
+                      </tr>                            
+                    </thead>
+                  
+                    <tbody>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>
+                          <p>The Embedded Local Certificate Authority is currently still locked. Please unlock first.</p>
+                        </td>
+                        <td>&nbsp;</td>
+                      </tr>
+                    </tbody>
+                  
+                    <tfoot>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                      </tr>                            
+                    </tfoot>                            
+                  </table>
+                  
+                </td>                            
+              </tr>
+              <tr align="center">
+                  <td style="font-size:12px;line-height:20px;">(Press F5 to update)</td>
+              </tr>
+            </table>
+          </div>  
+          <!-- table_row #0 -->
+
+
+          <!-- table_row #1 -->
+          <div id="tr1" style="display:none">
+            <table class="table_row">
+              <tr align="center">
+                <td>
+               
+                  <table class="table_variable">
+                    <thead>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>Create Certificate by CSR (ECC only)</td>
+                        <td>&nbsp;</td>
+                      </tr>                            
+                    </thead>
+                  
+                    <tbody>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>
+                        
+                          <div class="content" style="text-align:center">
+                          
+                            <div id="tr1_err" style="display:none">
+                              <p style="text-align:center; font-weight:bold">
+                                <br><br><br><span id="tr1_msg">error</span><br><br>
+                              </p>
+                            </div>
+
+                            <div id="tr1_text" style="display:block">
+                              <form name="formular1" method="post">
+                                 <p style="text-align:center">
+                                   <br><br>Paste Certification Signing Request (CSR) here:
+                                   <br><br>
+                                 </p>
+                            
+                                 <p style="text-align:center">
+                                   <textarea style="width:700px" class="textarea monospace" name="text" rows="12" autofocus=""></textarea>
+                                 </p>
+
+                                 <button class="play" type="button" name="button1" value="submit" onclick="javascript:MySubmit1()">
+                                   Create
+                                 </button>
+                                 <button class="cancel" type="reset" name="button2" value="cancel" onclick="javascript:MyCancel1()">
+                                   Cancel
+                                 </button>
+                              </form>
+                            </div>
+                            
+                          </div>
+                        
+                        </td>
+                        <td>&nbsp;</td>
+                      </tr>
+                    </tbody>
+                  
+                    <tfoot>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                      </tr>                            
+                    </tfoot>                            
+                  </table>
+                  
+                </td>                            
+              </tr>
+            </table>
+          </div>  
+          <!-- table_row #1 -->
+
+
+          <!-- table_row #2 -->
+          <div id="tr2" style="display:none">
+            <table class="table_row">
+              <tr align="center">
+                <td>
+               
+                  <table class="table_variable">
+                    <thead>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>Create Certificate by CSR (ECC only)</td>
+                        <td>&nbsp;</td>
+                      </tr>                            
+                    </thead>
+                  
+                    <tbody>
+                      <tr>
+                        <td>&nbsp;</td>
+                    <tbody>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>
+                        
+                          <div class="content">
+                           
+                            <p style="text-align:center">
+                              The following <span id="devcrt"><a>server</a></span> certificate has been generated:<br><br>
+                            </p>
+
+                            <p style="text-align:center">
+                              <textarea readonly style="width:700px" class="textarea monospace" id="tr2_cert" name="cert" rows="15" autofocus=""></textarea>
+                            </p>
+                            
+                            <p style="text-align:center">
+                              <br><br><a href="/cgi-bin/elca_interca.cgi" download="intermed.crt">Intermediate</a> certificate of the CA:<br><br>
+                            </p>
+
+                            <p style="text-align:center">
+                              <textarea readonly style="width:700px" class="textarea monospace" id="tr2_certca" name="certca" rows="15" autofocus=""></textarea>
+                            </p>
+                            
+                          </div>
+                        
+                        </td>
+                        <td>&nbsp;</td>
+                      </tr>
+                    </tbody>
+                  
+                    <tfoot>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                      </tr>                            
+                    </tfoot>                            
+                  </table>
+                  
+                </td>                            
+              </tr>
+            </table>
+          </div>  
+          <!-- table_row #2 -->
+
+
+        </td>
+      </tr>
+    </table> <!-- table_body -->
+  </body>
+</html>

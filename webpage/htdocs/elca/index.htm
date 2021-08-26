@@ -1,0 +1,299 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html>
+  <head>
+    <meta http-equiv="content-type"     content="text/html;charset=iso-8859-1"/>
+    <meta http-equiv="content-language" content="en"/>
+    <meta http-equiv="pragma"           content="no-cache"/>
+    <title><%sys_longname%></title>
+    <link rel="stylesheet" type="text/css" href="../css/style.css"/>          
+    <script type="text/javascript" src="../js/system.js"></script>
+    <script type="text/javascript" src="../js/elca.js"></script>
+    <script type="text/javascript">
+    <!--
+
+      function Ready()
+      {
+         let islocked = parseInt('<%elca_is_locked%>');
+         let keyerror = parseInt('<%elca_key_error%>'); 
+         let pskerror = parseInt('<%elca_psk_error%>'); 
+
+         if (isNaN(islocked)) islocked = 1;
+         if (0 == islocked)
+         {
+            document.getElementById("tr0").style.display = "none";
+            document.getElementById("tr1").style.display = "block";
+         }
+         else
+         {
+            document.getElementById("tr0").style.display = "block";
+            document.getElementById("tr1").style.display = "none";
+         }
+
+         if (isNaN(keyerror)) keyerror = 1;
+         if (isNaN(pskerror)) pskerror = 1;
+         if      (1 == keyerror)
+         {
+            document.getElementById("key_err").innerHTML = "Error, the intermediate key &quot;/elca/inter.key&quot; could not be found.";
+         }
+         else if (1 == pskerror)
+         {
+            document.getElementById("key_err").innerHTML = "Error, the PSK &quot;/elca/psk.key&quot; could not be found.";
+         }
+      }
+      
+    -->
+    </script>
+  </head>        
+
+  <body bgcolor="#ffffff" onload="Ready()">
+    <table class="table_body">
+      <tr align="center">
+        <td> 
+        
+          <!-- Header -->
+          <div class="header">
+            <h1><%sys_longname%></h1>
+            <div class="div"></div>
+            <div class="login"><a href="../logout.htm">Logout</a></div>
+            <div class="logo"></div>
+          </div>
+      
+          <!-- Navigation #1 -->
+          <table class="table_navi1">
+            <tr>
+              <td>&nbsp;</td>
+              <td class="main">
+                <ul>
+                  <li class="nb"><a href="../home/index.htm">Home</a></li>
+                  <li class="nm"><a class="active" href="index.htm">ELCA</a></li>
+                  <li class="ne"><a href="../main/index.htm">Maintenance</a></li>
+                </ul>
+              </td>
+              <td>&nbsp;</td>
+            </tr>
+          </table> 
+
+          <!-- Navigation #2, #3 -->
+          <div class="navi2">
+            <ul>
+              <li class="nb"><a class="active" href="index.htm">Overview</a></li>
+              <li class="nm"><a href="unlock.htm">Unlock / Lock</a></li>
+              <li class="nm"><a href="create.htm">Create Certificate</a></li>
+              <li class="nm"><a href="csrdec.htm">CSR Decoder Decoder</a></li>
+              <li class="ne"><a href="crtdec.htm">Certificate Decoder</a></li>
+            </ul>
+            <p><%sys_shortname%></p>
+          </div> 
+          <div class="navi3"></div>
+
+
+          <!-- table_row #0 -->
+          <div id="tr0" style="display:none">
+            <table class="table_row">
+              <tr align="center">
+                <td>
+               
+                  <table class="table_variable">
+                    <thead>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>Embedded Local Certificate Authority (ELCA)</td>
+                        <td>&nbsp;</td>
+                      </tr>                            
+                    </thead>
+                  
+                    <tbody>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>
+                          <p>The Embedded Local Certificate Authority is currently still locked. Please unlock first.</p>
+                        </td>
+                        <td>&nbsp;</td>
+                      </tr>
+                    </tbody>
+                  
+                    <tfoot>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                      </tr>                            
+                    </tfoot>                            
+                  </table>
+                  
+                </td>                            
+              </tr>
+              <tr align="center">
+                  <td style="font-size:12px;line-height:20px;">(Press F5 to update)</td>
+              </tr>
+            </table>
+          </div>  
+          <!-- table_row #0 -->
+
+
+          <!-- table_row #1 -->
+          <div id="tr1" style="display:none">
+            <table class="table_row">
+              <tr align="center">
+                <td>
+               
+                  <table class="table_variable" style="width:700px">
+                    <thead>
+                      <tr align="center">
+                        <td colspan="4">Embedded Local Certificate Authority (ELCA)</td>
+                      </tr>                            
+                    </thead>
+                  
+                    <tbody>
+                      <tr>
+                        <td width="10px">&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td width="15px">&nbsp;</td>
+                        <td width="520px" style="font-weight:bold;color:red" id="key_err">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td style="font-size:18px"><a href="/cgi-bin/elca_rootca.cgi" download="TinyELCA-Root-Certificate.crt">Root Certificate</a></td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td align="right">Common Name</td>
+                        <td>&nbsp;</td>
+                        <td><%elca_rc_cn%></td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td align="right">Organization</td>
+                        <td>&nbsp;</td>
+                        <td><%elca_rc_o%></td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td align="right">Country</td>
+                        <td>&nbsp;</td>
+                        <td><%elca_rc_c%></td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td align="right">Not Before</td>
+                        <td>&nbsp;</td>
+                        <td><%elca_rc_nb%></td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td align="right">Not After</td>
+                        <td>&nbsp;</td>
+                        <td><%elca_rc_na%></td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td align="right">Issuer Common Name</td>
+                        <td>&nbsp;</td>
+                        <td><%elca_rc_icn%></td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td align="right">Issuer Organization</td>
+                        <td>&nbsp;</td>
+                        <td><%elca_rc_io%></td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td align="right">Issuer Country</td>
+                        <td>&nbsp;</td>
+                        <td><%elca_rc_ic%></td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td align="right">Serial Number</td>
+                        <td>&nbsp;</td>
+                        <td><%elca_rc_s%></td>
+                      </tr>
+                      
+                      <tr>
+                        <td colspan="4">&nbsp;</td>
+                      </tr>
+                      
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td style="font-size:18px"><a href="/cgi-bin/elca_interca.cgi" download="TinyELCA-Intermediate-Certificate.crt">Intermediate Certificate</a></td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td align="right">Common Name</td>
+                        <td>&nbsp;</td>
+                        <td><%elca_ic_cn%></td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td align="right">Organization</td>
+                        <td>&nbsp;</td>
+                        <td><%elca_ic_o%></td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td align="right">Country</td>
+                        <td>&nbsp;</td>
+                        <td><%elca_ic_c%></td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td align="right">Not Before</td>
+                        <td>&nbsp;</td>
+                        <td><%elca_ic_nb%></td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td align="right">Not After</td>
+                        <td>&nbsp;</td>
+                        <td><%elca_ic_na%></td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td align="right">Issuer Common Name</td>
+                        <td>&nbsp;</td>
+                        <td><%elca_ic_icn%></td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td align="right">Issuer Organization</td>
+                        <td>&nbsp;</td>
+                        <td><%elca_ic_io%></td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td align="right">Issuer Country</td>
+                        <td>&nbsp;</td>
+                        <td><%elca_ic_ic%></td>
+                      </tr>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td align="right">Serial Number</td>
+                        <td>&nbsp;</td>
+                        <td><%elca_ic_s%></td>
+                      </tr>
+                    </tbody>
+                  
+                    <tfoot>
+                      <tr>
+                        <td colspan="4">&nbsp;</td>
+                      </tr>                            
+                    </tfoot>                            
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </div>  
+          <!-- table_row #1 -->
+
+
+        </td>
+      </tr>
+    </table> <!-- table_body -->
+  </body>
+</html>

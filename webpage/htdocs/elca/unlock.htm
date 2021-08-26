@@ -1,0 +1,591 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html>
+  <head>
+    <meta http-equiv="content-type"     content="text/html;charset=iso-8859-1"/>
+    <meta http-equiv="content-language" content="en"/>
+    <meta http-equiv="pragma"           content="no-cache"/>
+    <title><%sys_longname%></title>
+    <link rel="stylesheet" type="text/css" href="../css/style.css"/>          
+    <script type="text/javascript" src="../js/system.js"></script>
+    <script type="text/javascript" src="../js/elca.js"></script>
+    <script type="text/javascript">
+    <!--
+
+      function HandleReturnKey()
+      {
+         /* Ignore the return key */
+         document.getElementById("pass").addEventListener("keypress", function(e) {
+           if (e.keyCode == 13) {               
+             e.preventDefault();
+             return false;
+           }
+         });
+         
+         document.getElementById("pass1").addEventListener("keypress", function(e) {
+           if (e.keyCode == 13) {               
+             e.preventDefault();
+             return false;
+           }
+         });
+         
+         document.getElementById("pass2").addEventListener("keypress", function(e) {
+           if (e.keyCode == 13) {               
+             e.preventDefault();
+             return false;
+           }
+         });
+      
+      }
+
+      /**************************************************************/
+      
+      function CheckPassRules(pass)
+      {
+         var rules = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[^a-zA-Z0-9])(?!.*\s).{8,32}$/;   
+         
+         if (pass.match(rules)) 
+         {
+            return(1);
+         }
+         else
+         {
+            return(0);
+         }
+      }         
+
+      /**************************************************************/
+
+      function MyCancel2()
+      {
+         document.getElementById("tr2_err").style.display = "none";
+         document.getElementById("pass").focus();
+      }
+
+      function MySubmit2()
+      {
+         let ajax;
+         let data;
+         let pass64 = btoa(document.formular2.pass.value);
+      
+         /* Check if a "user" and "password" is available */
+         if (document.formular2.pass.value === "") return;
+
+         document.getElementById("tr2_err").style.display = "none";
+
+         data = JSON.stringify({ pass: pass64 });
+         ajax = GetAjaxObject();
+         ajax.open("POST", "/cgi-bin/elca_unlock.cgi", true);  
+         ajax.onreadystatechange = function() 
+         {
+            if ((this.readyState == 4) && (this.status == 200))
+            {
+               let jdata = JSON.parse(this.responseText);
+               let err = jdata.err;
+               let msg = jdata.msg;
+               
+               if (err != 0)
+               {
+                  /* Show error information */
+                  document.getElementById("tr2_msg").innerHTML = Error2Text(err);
+                  document.getElementById("tr2_err").style.display = "block";
+                  document.getElementById("pass").focus();
+               } 
+               else
+               {
+                  document.getElementById("tr2").style.display = "none";
+                  document.getElementById("tr3").style.display = "block";
+               }
+            } // if ((this.readyState == 4) && (this.status == 200))
+         } // end ajax.onreadystatechange
+         ajax.send(data);
+      }
+
+      /**************************************************************/
+
+      function MyCancel1()
+      {
+         document.getElementById("tr1_err").style.display = "none";
+         window.history.back();
+      }
+
+      function MySubmit1()
+      {
+         let ajax;
+         let data;
+
+         data = JSON.stringify({ unlock: "unlock" });
+         ajax = GetAjaxObject();
+         ajax.open("POST", "/cgi-bin/elca_lock.cgi", true);  
+         ajax.onreadystatechange = function() 
+         {
+            if ((this.readyState == 4) && (this.status == 200))
+            {
+               let jdata = JSON.parse(this.responseText);
+               let err = jdata.err;
+               let msg = jdata.msg;
+               
+               /* Check for any error */   
+               if (err != 0)
+               {
+                  /* Show error information */
+                  document.getElementById("tr1_msg").innerHTML = Error2Text(err);
+                  document.getElementById("tr1_err").style.display = "block";
+               } 
+               else
+               {
+                  document.getElementById("tr1").style.display = "none";
+                  document.getElementById("tr4").style.display = "block";
+               }
+            } // if ((this.readyState == 4) && (this.status == 200))
+         } // end ajax.onreadystatechange
+         ajax.send(data);
+      }
+
+      /**************************************************************/
+
+      function Register0(pass)
+      {
+         let ajax;
+         let data;
+         let pass64 = btoa(pass);
+
+         data = JSON.stringify({ user: "init", pass: pass64 });
+         ajax = GetAjaxObject();
+         ajax.open("POST", "/cgi-bin/elca_init.cgi", true);  
+         ajax.onreadystatechange = function() 
+         {
+            if ((this.readyState == 4) && (this.status == 200))
+            {
+               let jdata = JSON.parse(this.responseText);
+               let err = jdata.err;
+               let msg = jdata.msg;
+               
+               /* Check for any error */   
+               if (err != 0)
+               {
+                  /* Show error information */
+                  document.getElementById("tr0_msg").innerHTML = Error2Text(err);
+                  document.getElementById("tr0_err").style.display = "block";
+               } 
+               else
+               {
+                  document.getElementById("tr0").style.display = "none";
+                  document.getElementById("tr3").style.display = "block";
+               }
+            } // if ((this.readyState == 4) && (this.status == 200))
+         } // end ajax.onreadystatechange
+         ajax.send(data);
+      }
+
+      function MyCancel0()
+      {
+         document.getElementById("tr0_err").style.display = "none";
+         document.getElementById("pass1").focus();
+      }
+
+      function MySubmit0()
+      {
+         /* Check if a "password1" and "password2" is available */
+         if (document.formular0.pass1.value === "") return;
+         if (document.formular0.pass2.value === "") return;
+         
+         /* Check for passwords error */ 
+         if (document.formular0.pass1.value != document.formular0.pass2.value)
+         {
+            /* Error, display error message password not equal */
+            document.getElementById("tr0_msg").innerHTML = "The Confirm Password does not match the Password.";
+            document.getElementById("tr0_err").style.display = "block";
+         }
+         else
+         {
+            if (1 == CheckPassRules(document.formular0.pass1.value))
+            {
+               Register0(document.formular0.pass1.value);
+            }
+            else
+            {
+               /* Error, display error password rule */
+               document.getElementById("tr0_msg").innerHTML = "The password does not meet the password policy requirements.";
+               document.getElementById("tr0_err").style.display = "block";
+            }   
+         }
+      }
+
+      /**************************************************************/
+
+      function Ready()
+      {
+         let islocked = parseInt('<%elca_is_locked%>');
+
+         if (isNaN(islocked)) islocked = -1;
+         
+         if      (-1 == islocked)
+         {
+            /* The Embedded Local Certificate Authority (ELCA) must be initialized */
+            document.getElementById("tr0").style.display = "block";
+            document.getElementById("pass1").focus();
+         }
+         else if (0 == islocked)
+         {
+            /* Should it be locked? */
+            document.getElementById("tr1").style.display = "block";
+         }
+         else if (1 == islocked)
+         {
+            /* Should it be unlocked? */
+            document.getElementById("tr2").style.display = "block";
+            document.getElementById("pass").focus();
+         }
+         
+         HandleReturnKey();         
+      }
+      
+    -->
+    </script>
+  </head>        
+
+  <body bgcolor="#ffffff" onload="Ready()">
+    <table class="table_body">
+      <tr align="center">
+        <td> 
+        
+          <!-- Header -->
+          <div class="header">
+            <h1><%sys_longname%></h1>
+            <div class="div"></div>
+            <div class="login"><a href="../logout.htm">Logout</a></div>
+            <div class="logo"></div>
+          </div>
+      
+          <!-- Navigation #1 -->
+          <table class="table_navi1">
+            <tr>
+              <td>&nbsp;</td>
+              <td class="main">
+                <ul>
+                  <li class="nb"><a href="../home/index.htm">Home</a></li>
+                  <li class="nm"><a class="active" href="index.htm">ELCA</a></li>
+                  <li class="ne"><a href="../main/index.htm">Maintenance</a></li>
+                </ul>
+              </td>
+              <td>&nbsp;</td>
+            </tr>
+          </table> 
+
+          <!-- Navigation #2, #3 -->
+          <div class="navi2">
+            <ul>
+              <li class="nb"><a href="index.htm">Overview</a></li>
+              <li class="nm"><a class="active" href="unlock.htm">Unlock / Lock</a></li>
+              <li class="nm"><a href="create.htm">Create Certificate</a></li>
+              <li class="nm"><a href="csrdec.htm">CSR Decoder Decoder</a></li>
+              <li class="ne"><a href="crtdec.htm">Certificate Decoder</a></li>
+            </ul>
+            <p><%sys_shortname%></p>
+          </div> 
+          <div class="navi3"></div>
+
+
+          <!-- table_row #0 (init) -->
+          <div id="tr0" style="display:none">
+            <table class="table_row">
+              <tr align="center">
+                <td>
+               
+                  <table class="table_variable">
+                    <thead>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>The Embedded Local Certificate Authority (ELCA) must be initialized</td>
+                        <td>&nbsp;</td>
+                      </tr>                            
+                    </thead>
+                  
+                    <tbody>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>
+                        
+                          <div class="content">
+                            <form name="formular0" method="post">
+                           
+                              <p style="text-align:center">
+                                <br><br>Password requirement: 8-32 characters, at least one uppercase letter,
+                                <br><br>one lowercase letter, one number and one symbol.
+                              </p>
+                           
+                              <div id="tr0_err" style="display:none">
+                                <p style="text-align:center; font-weight:bold">
+                                  <br><br><span id="tr0_msg">error</span>
+                                </p>
+                              </div>
+                              
+                              <fieldset>
+                                <label class="normal">&nbsp;</label>
+                                <br>
+                              
+                                <label class="normal">New Password</label>
+                                <input type="password" id="pass1" name="pass1" />
+                                <br>
+                                <label class="normal">Confirm Password</label>
+                                <input type="password" id="pass2" name="pass2"  />
+                                <br>
+                              
+                                <label class="normal">&nbsp;</label>
+                                <button class="play" type="button" name="button1" value="submit" onclick="javascript:MySubmit0()">
+                                  Submit
+                                </button>
+                                <button class="cancel" type="reset" name="button2" value="cancel" onclick="javascript:MyCancel0()">
+                                  Cancel
+                                </button>
+                              </fieldset>
+                              
+                            </form>
+                          </div>
+                        
+                        </td>
+                        <td>&nbsp;</td>
+                      </tr>
+                    </tbody>
+                  
+                    <tfoot>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                      </tr>                            
+                    </tfoot>                            
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </div>  
+          <!-- table_row #0 --> 
+
+
+          <!-- table_row #1 (lock) -->
+          <div id="tr1" style="display:none">
+            <table class="table_row">
+              <tr align="center">
+                <td>
+               
+                  <table class="table_variable">
+                    <thead>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>Embedded Local Certificate Authority (ELCA)</td>
+                        <td>&nbsp;</td>
+                      </tr>                            
+                    </thead>
+                  
+                    <tbody>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>
+                        
+                          <div class="content">
+                            <form name="formular1" method="post">
+                           
+                              <p style="text-align:center">
+                                <br><br>The Embedded Local Certificate Authority is unlocked,
+                                <br><br>should it be locked?
+                              </p>
+                           
+                              <div id="tr1_err" style="display:none">
+                                <p style="text-align:center; font-weight:bold">
+                                  <br><br><span id="tr1_msg">error</span>
+                                </p>
+                              </div>
+                              
+                              <fieldset>
+                                <label class="normal">&nbsp;</label>
+                                <br>
+                              
+                                <label class="normal">&nbsp;</label>
+                                <button class="play" type="button" name="button1" value="submit" onclick="javascript:MySubmit1()">
+                                  Yes
+                                </button>
+                                <button class="cancel" type="reset" name="button2" value="cancel" onclick="javascript:MyCancel1()">
+                                  Cancel
+                                </button>
+                              </fieldset>
+                              
+                            </form>
+                          </div>
+                        
+                        </td>
+                        <td>&nbsp;</td>
+                      </tr>
+                    </tbody>
+                  
+                    <tfoot>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                      </tr>                            
+                    </tfoot>                            
+                  </table>
+                  
+                </td>                            
+              </tr>
+            </table>
+          </div>  
+          <!-- table_row #1 -->
+
+
+          <!-- table_row #2 (unlock) -->
+          <div id="tr2" style="display:none">
+            <table class="table_row">
+              <tr align="center">
+                <td>
+               
+                  <table class="table_variable">
+                    <thead>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>The Embedded Local Certificate Authority (ELCA) must be unlocked</td>
+                        <td>&nbsp;</td>
+                      </tr>                            
+                    </thead>
+                  
+                    <tbody>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>
+                        
+                          <div class="content">
+                            <form name="formular2" method="post">
+                           
+                              <div id="tr2_err" style="display:none">
+                                <p style="text-align:center; font-weight:bold">
+                                  <br><br><span id="tr2_msg">error</span>
+                                </p>
+                              </div>
+                              
+                              <fieldset>
+                                <label class="normal">&nbsp;</label>
+                                <br>
+                              
+                                <label class="normal">Password</label>
+                                <input type="password" id="pass" name="pass"  />
+                                <br>
+
+                                <label class="normal">&nbsp;</label>
+                                <button class="play" type="button" name="button1" value="unlock" onclick="javascript:MySubmit2()">
+                                  Login
+                                </button>
+                                <button class="cancel" type="reset" name="button2" value="cancel" onclick="javascript:MyCancel2()">
+                                  Cancel
+                                </button>
+                              </fieldset>
+                            </form>
+                          </div>
+                        </td>
+                        <td>&nbsp;</td>
+                      </tr>
+                    </tbody>
+                  
+                    <tfoot>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                      </tr>                            
+                    </tfoot>                            
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </div>  
+          <!-- table_row #2 --> 
+
+
+          <!-- table_row #3 (unlocked) -->
+          <div id="tr3" style="display:none">
+            <table class="table_row">
+              <tr align="center">
+                <td>
+               
+                  <table class="table_variable">
+                    <thead>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>Embedded Local Certificate Authority (ELCA)</td>
+                        <td>&nbsp;</td>
+                      </tr>                            
+                    </thead>
+                  
+                    <tbody>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>
+                          <p>The Embedded Local Certificate Authority is unlocked.</p>
+                        </td>
+                        <td>&nbsp;</td>
+                      </tr>
+                    </tbody>
+                  
+                    <tfoot>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                      </tr>                            
+                    </tfoot>                            
+                  </table>
+                  
+                </td>                            
+              </tr>
+            </table>
+          </div>
+          <!-- table_row #3 -->
+
+
+          <!-- table_row #4 (locked) -->
+          <div id="tr4" style="display:none">
+            <table class="table_row">
+              <tr align="center">
+                <td>
+               
+                  <table class="table_variable">
+                    <thead>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>Embedded Local Certificate Authority (ELCA)</td>
+                        <td>&nbsp;</td>
+                      </tr>                            
+                    </thead>
+                  
+                    <tbody>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>
+                          <p>The Embedded Local Certificate Authority is locked.</p>
+                        </td>
+                        <td>&nbsp;</td>
+                      </tr>
+                    </tbody>
+                  
+                    <tfoot>
+                      <tr>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                      </tr>                            
+                    </tfoot>                            
+                  </table>
+                  
+                </td>                            
+              </tr>
+            </table>
+          <div>  
+          <!-- table_row #4 -->
+
+
+        </td>
+      </tr>
+    </table> <!-- table_body -->
+  </body>
+</html>
