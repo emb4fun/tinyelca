@@ -24,9 +24,6 @@
   <ProjectSessionItem path="tiny-elca"/>
   <ProjectSessionItem path="tiny-elca;tiny-elca"/>
   <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files"/>
-  <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files;common"/>
-  <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files;common;library"/>
-  <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files;common;library;ipweb"/>
   <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files;src"/>
   <ProjectSessionItem path="tiny-elca;tiny-elca;System Files"/>
  </Project>
@@ -61,7 +58,7 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="547" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../src/main.c" selected="1" top="518" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="590" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../src/main.c" selected="1" top="574" codecName="Default"/>
  </Files>
- <ARMCrossStudioWindow activeProject="tiny-elca" fileDialogDefaultFilter="*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx" autoConnectTarget="J-Link" buildConfiguration="RAM Release" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="D:/Projekte/Embedded/Tiny/TinyELCA/source/common/library/ipapi/src" debugSearchPath="" autoConnectCapabilities="3199"/>
+ <ARMCrossStudioWindow activeProject="tiny-elca" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="RAM Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="D:/Projekte/GitHub/tinyelca/source/common/library/mbedtls/library" debugSearchPath="" autoConnectCapabilities="3199"/>
 </session>
