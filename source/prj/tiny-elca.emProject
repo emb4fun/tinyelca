@@ -36,6 +36,7 @@
       linker_section_placement_file="$(ProjectDir)/sdram_placement.xml"
       project_directory=""
       project_type="Executable"
+      speed="25000"
       target_reset_script="Reset()"
       target_script_file="$(ProjectDir)/am335x_Target.js" />
     <configuration
