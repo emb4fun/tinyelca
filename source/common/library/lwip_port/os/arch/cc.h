@@ -84,8 +84,10 @@
 #define X32_F "x"
 #define SZT_F "zu" 
 
-#define LWIP_PLATFORM_ASSERT(x)     { printf(x); while(1) { __asm("nop"); } }
-#define LWIP_PLATFORM_DIAG(x)       printf x
+int  term_printf (const char *fmt, ...);
+
+#define LWIP_PLATFORM_ASSERT(x)     { term_printf(x); while(1) { __asm("nop"); } }
+#define LWIP_PLATFORM_DIAG(x)       term_printf x
 
 #define BYTE_ORDER LITTLE_ENDIAN
 #define LWIP_PROVIDE_ERRNO

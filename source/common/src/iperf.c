@@ -58,7 +58,7 @@
 
 #define IPERF_TCP_PORT     5001
 
-#define MAX_IPERF_CLIENT   4
+#define MAX_IPERF_CLIENT   8
 
 typedef struct _client_info_
 {
@@ -104,7 +104,7 @@ static client_info_t *FindFreeClient (void)
    
    for (int i=0; i<MAX_IPERF_CLIENT; i++)
    {
-      if (OS_TASK_STATE_NOT_IN_USE == ClientArray[i].TCB.State)
+      if ( OS_TaskTestStateNotInUsed(&ClientArray[i].TCB) )
       {
          Client = &ClientArray[i];
          break;
@@ -141,6 +141,7 @@ static void IperfClient (void *arg)
    shutdown(Sock, SHUT_RDWR);
    closesocket(Sock); 
    
+  OS_TaskExit();
 } /* IperfClient */
 
 /*************************************************************************/
@@ -176,7 +177,7 @@ static void IperfServer (void *p)
    Server.sin_family      = AF_INET;
    
    /* Assign a name (port) to an unnamed socket */
-   bind(ServerSocket, (const struct sockaddr *)&Server, sizeof(Server));
+   bind(ServerSocket, (const struct sockaddr *)&Server, sizeof(Server));   /*lint !e740*/
    
    listen(ServerSocket, MAX_IPERF_CLIENT);
    
@@ -225,6 +226,7 @@ void iperf_Start (void)
    /* Create stack */   
    for(int i=0; i<MAX_IPERF_CLIENT; i++)
    {
+      OS_TaskSetStateNotInUsed(&ClientArray[i].TCB);
       ClientArray[i].Stack     = (uint8_t*)&ClientStack[i][0];
       ClientArray[i].StackSize = TASK_IP_IPERF_CLIENT_STK_SIZE;
    }

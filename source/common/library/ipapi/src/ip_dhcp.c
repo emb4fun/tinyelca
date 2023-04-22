@@ -47,6 +47,7 @@
 #include "terminal.h"
 
 #include "lwip\prot\dhcp.h"
+#include "lwip\netif.h"
 #include "lwip\netifapi.h"
 #include "lwip\dns.h"
 
@@ -72,7 +73,7 @@ void dhcp_set_clientid (uint8_t *id, uint8_t len);
 
 static int DhcpInUse[2] = {0,0}; 
 
-static ip_dhcp_callback_t DhcpCallback = NULL;
+static ip_dhcp_callback_t DhcpCallback[ETH_MAX_IFACE];
 
 static uint32_t NTPServerList[ETH_MAX_IFACE][LWIP_DHCP_MAX_NTP_SERVERS];
 
@@ -89,14 +90,19 @@ static uint32_t NTPServerList[ETH_MAX_IFACE][LWIP_DHCP_MAX_NTP_SERVERS];
 /*  Out   : none                                                         */
 /*  Return: none                                                         */
 /*************************************************************************/
-void _IP_DHCP_CallbackBound (void)
+void _IP_DHCP_CallbackBound (void *p)
 {
-   TAL_DEBUG(TAL_DBG_DHCP, "DHCP is bound");
-      
-   if (DhcpCallback != NULL)
+   uint8_t       i;
+   struct netif *netif = (struct netif *)p;
+   
+   for(i=0; i<ETH_MAX_IFACE; i++)
    {
-      DhcpCallback();
-   }
+      if (netif == IP_IF_NetIfGet(i))
+      {
+         DhcpCallback[i]();
+         break;
+      }
+   } 
 
 } /* _IP_DHCP_CallbackBound */
 
@@ -186,9 +192,9 @@ void IP_DHCP_Stop (uint8_t iface)
 {
    struct netif *netif;
    char          name[] = "enx";
-   ip4_addr_t    ipaddr;
-   ip4_addr_t    netmask;
-   ip4_addr_t    gw;
+   ip_addr_t     ipaddr;
+   ip_addr_t     netmask;
+   ip_addr_t     gw;
 
    (void)iface;
 
@@ -201,17 +207,17 @@ void IP_DHCP_Stop (uint8_t iface)
          netif = netif_find(name);
          if (netif != NULL)
          {
-            DhcpInUse[iface] = 0;
-            DhcpCallback     = NULL;
+            DhcpInUse[iface]    = 0;
+            DhcpCallback[iface] = NULL;
             netifapi_dhcp_stop(netif);
          
             OS_TimeDly(100);
          
             /* Set startup values */
-            IP_IF_StartupValuesGet(0, &ipaddr.addr, &netmask.addr, &gw.addr);
-            netif_set_addr(netif, &ipaddr, &netmask, &gw);         
+            IP_IF_StartupValuesGet(0, &ipaddr, &netmask, &gw);
+            netif_set_addr(netif, ip_2_ip4(&ipaddr), ip_2_ip4(&netmask), ip_2_ip4(&gw));         
          
-            ipaddr.addr = 0;
+            ip_2_ip4(&ipaddr)->addr = 0;
             dns_setserver(0, &ipaddr); 
             dns_setserver(1, &ipaddr); 
          }   
@@ -265,7 +271,7 @@ uint32_t IP_DHCP_ServerGet (uint8_t iface)
          if (netif != NULL)
          {
             dhcp = netif_dhcp_data(netif);
-            addr = dhcp->server_ip_addr.addr;
+            addr = ip_2_ip4(&dhcp->server_ip_addr)->addr;
          }
       }
    }      
@@ -282,9 +288,10 @@ uint32_t IP_DHCP_ServerGet (uint8_t iface)
 /*************************************************************************/
 void IP_DHCP_CallbackSet (uint8_t iface, ip_dhcp_callback_t callback)
 {
-   (void)iface;
-
-   DhcpCallback = callback;
+   if (iface < ETH_MAX_IFACE)
+   {
+      DhcpCallback[iface] = callback;
+   }   
    
 } /* IP_DHCP_CallbackSet */
 
@@ -327,30 +334,6 @@ void IP_DHCP_TimeoutSet (uint8_t iface, uint32_t timeout_msec)
    dhcp_set_timeout(timeout_msec);
    
 } /* IP_DHCP_TimeoutSet */
-
-/*************************************************************************/
-/*  TP_DHCP_HostnameSet                                                  */
-/*                                                                       */
-/*  Set the given hostname.                                              */
-/*                                                                       */
-/*  In    : iface, hostname                                              */
-/*  Out   : none                                                         */
-/*  Return: none                                                         */
-/*************************************************************************/
-void IP_DHCP_HostnameSet (uint8_t iface, char *hostname)
-{
-   struct netif *netif;
-   
-   if ((iface < ETH_MAX_IFACE) && (hostname != NULL))
-   {
-      netif = IP_IF_NetIfGet(iface);
-      if (netif != NULL)
-      {
-         netif->hostname = hostname;
-      }
-   }      
-
-} /* TP_DHCP_HostnameSet */
 
 /*************************************************************************/
 /*  IP_DHCP_ClientIDSet                                                  */

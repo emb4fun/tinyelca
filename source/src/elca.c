@@ -448,7 +448,7 @@ static int LoadPSK (void)
          memset(data, 0x00, sizeof(data));
          size = (int)f_size(&fil);
          f_lseek(&fil, 0);
-         res = f_write (&fil, data, (UINT)size, &bw);
+         res = f_write (&fil, data, (UINT)size, (UINT*)&bw);
          f_close(&fil);
       }
       
@@ -589,7 +589,7 @@ static int LoadCAKey (void)
          memset(data, 0x00, sizeof(data));
          size = (int)f_size(&fil);
          f_lseek(&fil, 0);
-         res = f_write (&fil, data, (UINT)size, &bw);
+         res = f_write (&fil, data, (UINT)size, (UINT*)&bw);
          f_close(&fil);
       }
       

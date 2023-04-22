@@ -1,5 +1,5 @@
 /**************************************************************************
-*  Copyright (c) 2019 by Michael Fischer (www.emb4fun.de).
+*  Copyright (c) 2019-2023 by Michael Fischer (www.emb4fun.de).
 *  All rights reserved.
 *
 *  Redistribution and use in source and binary forms, with or without 
@@ -29,11 +29,6 @@
 *  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF 
 *  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
 *  SUCH DAMAGE.
-*
-***************************************************************************
-*  History:
-*
-*  14.07.2019  mifi  First version for the BeagleBone Black.
 **************************************************************************/
 #define __MAIN_C__
 
@@ -69,9 +64,6 @@
 /*=======================================================================*/
 /*  Definition of all extern Data                                        */
 /*=======================================================================*/
-
-extern int nNumThreadsMax;
-extern int nNumThreadsMaxTLS;
 
 /*=======================================================================*/
 /*  Definition of all local Data                                         */
@@ -162,10 +154,13 @@ static void SecFunction (void)
 {
    static int nOldMode = 1;
    static int nNewMode = 1;
+   char        Buffer[16];
    
    if (1 == nDHCPCallbackBound)
    {
       nDHCPCallbackBound = 0;
+      
+      term_printf("Iface 0: %s\r\n", htoa(IP_IF_AddrGet(0), Buffer, sizeof(Buffer)));
       
       IP_mDNS_Start(&MDNSConfig); 
       IP_TNP_SetName(MDNSConfig.Hostname2, (uint8_t)strlen(MDNSConfig.Hostname2));
@@ -200,6 +195,7 @@ static void SecFunction (void)
          else
          {
             nLedMode = LED_MODE_READY;
+            term_printf("Iface 0: %s\r\n", htoa(IP_IF_AddrGet(0), Buffer, sizeof(Buffer)));
          }
       }
   
@@ -693,16 +689,6 @@ void term_RxCallback (uint8_t bData)
       case 'n':
       {
          IP_IF_OutputConfig(0);
-         break;
-      }
-      
-      case '1':
-      {
-         term_printf("\r\n");
-         term_printf("Threads Max HTTP : %d\r\n", nNumThreadsMax);
-         term_printf("Threads Max HTTPs: %d\r\n", nNumThreadsMaxTLS);
-         nNumThreadsMax    = 0;
-         nNumThreadsMaxTLS = 0;
          break;
       }
       

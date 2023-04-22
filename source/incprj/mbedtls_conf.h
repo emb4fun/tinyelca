@@ -135,7 +135,7 @@
  *       regardless of the setting of MBEDTLS_HAVE_TIME, unless
  *       MBEDTLS_TIMING_ALT is used. See timing.c for more information.
  */
-#define MBEDTLS_HAVE_TIME
+//#define MBEDTLS_HAVE_TIME
 
 /**
  * \def MBEDTLS_HAVE_TIME_DATE
@@ -815,6 +815,7 @@ extern void  mbedtls_free(void *ptr);
 //#define MBEDTLS_ECP_DP_BP256R1_ENABLED
 //#define MBEDTLS_ECP_DP_BP384R1_ENABLED
 //#define MBEDTLS_ECP_DP_BP512R1_ENABLED
+/* Montgomery curves (supporting ECP) */
 //#define MBEDTLS_ECP_DP_CURVE25519_ENABLED
 //#define MBEDTLS_ECP_DP_CURVE448_ENABLED
 
@@ -902,7 +903,7 @@ extern void  mbedtls_free(void *ptr);
  *       library may modify the way the ECDH context layout is configured
  *       and may modify the layout of the new context type.
  */
-#define MBEDTLS_ECDH_LEGACY_CONTEXT
+//#define MBEDTLS_ECDH_LEGACY_CONTEXT
 
 /**
  * \def MBEDTLS_ECDSA_DETERMINISTIC
@@ -1564,7 +1565,7 @@ extern void  mbedtls_free(void *ptr);
  *
  * Uncomment to enable support for record checking.
  */
-#define MBEDTLS_SSL_RECORD_CHECKING
+//#define MBEDTLS_SSL_RECORD_CHECKING
 
 /**
  * \def MBEDTLS_SSL_DTLS_CONNECTION_ID
@@ -1630,7 +1631,7 @@ extern void  mbedtls_free(void *ptr);
  *
  * Comment to disable the context serialization APIs.
  */
-#define MBEDTLS_SSL_CONTEXT_SERIALIZATION
+//#define MBEDTLS_SSL_CONTEXT_SERIALIZATION
 
 /**
  * \def MBEDTLS_SSL_DEBUG_ALL
@@ -2313,7 +2314,7 @@ extern void  mbedtls_free(void *ptr);
  * Uncomment to enable use of ZLIB
  */
 //#define MBEDTLS_ZLIB_SUPPORT
-/** \} name SECTION: mbed TLS feature support */
+/* \} name SECTION: mbed TLS feature support */
 
 /**
  * \name SECTION: mbed TLS modules
@@ -3120,7 +3121,7 @@ extern void  mbedtls_free(void *ptr);
 /**
  * \def MBEDTLS_PK_C
  *
- * Enable the generic public (asymetric) key layer.
+ * Enable the generic public (asymmetric) key layer.
  *
  * Module:  library/pk.c
  * Caller:  library/ssl_tls.c
@@ -3136,7 +3137,7 @@ extern void  mbedtls_free(void *ptr);
 /**
  * \def MBEDTLS_PK_PARSE_C
  *
- * Enable the generic public (asymetric) key parser.
+ * Enable the generic public (asymmetric) key parser.
  *
  * Module:  library/pkparse.c
  * Caller:  library/x509_crt.c
@@ -3151,7 +3152,7 @@ extern void  mbedtls_free(void *ptr);
 /**
  * \def MBEDTLS_PK_WRITE_C
  *
- * Enable the generic public (asymetric) key writer.
+ * Enable the generic public (asymmetric) key writer.
  *
  * Module:  library/pkwrite.c
  * Caller:  library/x509write.c

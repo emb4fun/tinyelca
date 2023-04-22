@@ -56,6 +56,8 @@
 **************************************************************************/
 
 void cert_Init (void);
+int  cert_Check (void);
+void cert_ELCACallback (int nError);
 
 int  cert_Get_DeviceKey(char **buf, size_t *buflen);
 int  cert_Get_DeviceCert(char **buf, size_t *buflen);

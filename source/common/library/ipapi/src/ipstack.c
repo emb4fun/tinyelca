@@ -68,6 +68,11 @@
 
 int errno = 0; /* Needed by lwIP */
 
+/*
+ * This variable is initialized by the system to contain the wildcard IPv4 address.
+ */
+const struct in_addr inaddr_any = {INADDR_ANY};
+
 /*=======================================================================*/
 /*  All Structures and Common Constants                                  */
 /*=======================================================================*/
@@ -117,13 +122,19 @@ static void NetIfStatusCallback0 (struct netif *netif)
 {
    if(netif_is_up(netif))
    {
-      TAL_PRINTF("NetIf 0 is up\r\n");
-      NetIfIsUp[0] = 1;
+      if (0 == NetIfIsUp[0])
+      {
+         NetIfIsUp[0] = 1;
+         TAL_PRINTF("NetIf 0 is up\r\n");
+      }   
    }
    else
    {
-      TAL_PRINTF("NetIf 0 is down\r\n");
-      NetIfIsUp[0] = 0;
+      if (1 == NetIfIsUp[0])
+      {
+         NetIfIsUp[0] = 0;
+         TAL_PRINTF("NetIf 0 is down\r\n");
+      }   
    }
    
 } /* NetIfStatusCallback0 */
@@ -133,13 +144,19 @@ static void NetIfStatusCallback1 (struct netif *netif)
 {
    if(netif_is_up(netif))
    {
-      TAL_PRINTF("NetIf 1 is up\r\n");
-      NetIfIsUp[1] = 1;
+      if (0 == NetIfIsUp[1])
+      {
+         NetIfIsUp[1] = 1;
+         TAL_PRINTF("NetIf 1 is up\r\n");
+      }         
    }
    else
    {
-      TAL_PRINTF("NetIf 1 is down\r\n");
-      NetIfIsUp[1] = 0;
+      if (1 == NetIfIsUp[1])
+      {
+         NetIfIsUp[1] = 0;
+         TAL_PRINTF("NetIf 1 is down\r\n");
+      }         
    }
    
 } /* NetIfStatusCallback1 */
@@ -197,6 +214,18 @@ int __attribute__((weak)) IP_TNP_IsStarted (void)
 {
    return(0);
 } /* IP_TNP_IsStarted */
+
+/*************************************************************************/
+/*  IP_TNP_IsES                                                          */
+/*                                                                       */
+/*  In    : none                                                         */
+/*  Out   : none                                                         */
+/*  Return: 0 not started / 1 otherwise                                  */
+/*************************************************************************/
+int __attribute__((weak)) IP_TNP_IsES (void)
+{
+   return(0);
+} /* IP_TNP_IsES */
 
 /*************************************************************************/
 /*  IP_DHCP_ServerGet                                                    */
@@ -385,7 +414,7 @@ char *htoa (uint32_t Addr, char *pBuf, int BufLen)
 {
    ip_addr_t ipaddr;
 
-   ipaddr.addr = htonl(Addr);
+   ip_2_ip4(&ipaddr)->addr = htonl(Addr);
 
    return( ipaddr_ntoa_r(&ipaddr, pBuf, BufLen) );
 } /* htoa */
@@ -494,7 +523,7 @@ uint32_t IP_IF_AddrGet (uint8_t iface)
 
    if ((iface < ETH_MAX_IFACE) && (pNetIf[iface] != NULL))
    {
-      addr = pNetIf[iface]->ip_addr.addr;
+      addr = ip_2_ip4(&pNetIf[iface]->ip_addr)->addr;
    }
 
    return(ntohl(addr));
@@ -515,7 +544,7 @@ uint32_t IP_IF_MaskGet (uint8_t iface)
 
    if ((iface < ETH_MAX_IFACE) && (pNetIf[iface] != NULL))
    {
-      addr = pNetIf[iface]->netmask.addr;
+      addr = ip_2_ip4(&pNetIf[iface]->netmask)->addr;
    }
 
    return(ntohl(addr));
@@ -536,11 +565,33 @@ uint32_t IP_IF_GWGet (uint8_t iface)
 
    if ((iface < ETH_MAX_IFACE) && (pNetIf[iface] != NULL))
    {
-      addr = pNetIf[iface]->gw.addr;
+      addr = ip_2_ip4(&pNetIf[iface]->gw)->addr;
    }
 
    return(ntohl(addr));
 } /* IP_IF_GWGet */
+
+/*************************************************************************/
+/*  IP_IF_LinkSpeedDuplexGet                                             */
+/*                                                                       */
+/*  Get the gateway address of the network interface in host order.      */
+/*                                                                       */
+/*  In    : iface                                                        */
+/*  Out   : none                                                         */
+/*  Return: Address in host order                                        */
+/*************************************************************************/
+void IP_IF_LinkSpeedDuplexGet (uint8_t iface, uint16_t *speed, uint8_t *duplex)
+{
+   *speed  = 0;
+   *duplex = 0;
+   
+   if ((iface < ETH_MAX_IFACE) && (pNetIf[iface] != NULL))
+   {
+      *speed  = (uint16_t)pNetIf[iface]->link_speed;
+      *duplex = (uint8_t)pNetIf[iface]->link_duplex_full;
+   }
+
+} /* IP_IF_LinkSpeedDuplexGet */
 
 /*************************************************************************/
 /*  IP_IF_Start                                                          */
@@ -584,13 +635,13 @@ int IP_IF_Start (uint8_t iface)
    }
    
    /* IP address setting */
-   ipaddr.addr  = IPAddr[iface];
-   netmask.addr = NETMask[iface];
-   gw.addr      = GWAddr[iface];
+   ip_2_ip4(&ipaddr)->addr  = IPAddr[iface];
+   ip_2_ip4(&netmask)->addr = NETMask[iface];
+   ip_2_ip4(&gw)->addr      = GWAddr[iface];
 
-   StartupIPAddr[iface]  = ipaddr.addr; 
-   StartupNETMask[iface] = netmask.addr;
-   StartupGWAddr[iface]  = gw.addr;
+   StartupIPAddr[iface]  = ip_2_ip4(&ipaddr)->addr;
+   StartupNETMask[iface] = ip_2_ip4(&netmask)->addr;
+   StartupGWAddr[iface]  = ip_2_ip4(&gw)->addr;
    
    /* Add the network interface to the list of lwIP netifs. */
    if (0 == iface)
@@ -608,12 +659,20 @@ int IP_IF_Start (uint8_t iface)
    }
 #endif   
    
-   pNetIf[iface] = netif_add(&NetIf[iface], &ipaddr, &netmask, &gw, &MACAddr[iface][0], init, tcpip_input); /*lint !e644*/
+   pNetIf[iface] = netif_add(&NetIf[iface], ip_2_ip4(&ipaddr), ip_2_ip4(&netmask), ip_2_ip4(&gw), &MACAddr[iface][0], init, tcpip_input); /*lint !e644*/
 
    if (pNetIf[iface] != NULL)
    {
       if (0 == iface)
       {
+
+#if defined(LWIP_IPV6) && (LWIP_IPV6 >= 1)
+         netif_set_ip6_autoconfig_enabled(pNetIf[iface], 0);
+         netif_create_ip6_linklocal_address(pNetIf[iface], 1);
+         netif_ip6_addr_set_state(pNetIf[iface], 0, IP6_ADDR_VALID);
+         term_printf("\r\nIPv6 Address: %s\r\n\r\n", ip6addr_ntoa(netif_ip6_addr(pNetIf[iface], 0)));
+#endif /* LWIP_IPV6 */
+
          /* Set the network interface as the default network interface. */
          netif_set_default(pNetIf[iface]);
       }         
@@ -705,19 +764,58 @@ int IP_IF_IsReady (uint8_t iface)
 } /* IP_IF_IsReady */
 
 /*************************************************************************/
+/*  IP_IF_HostnameSet                                                    */
+/*                                                                       */
+/*  Set the given hostname.                                              */
+/*                                                                       */
+/*  In    : iface, hostname                                              */
+/*  Out   : none                                                         */
+/*  Return: none                                                         */
+/*************************************************************************/
+void IP_IF_HostnameSet (uint8_t iface, char *hostname)
+{
+   if ((iface < ETH_MAX_IFACE) && (pNetIf[iface] != NULL) && (hostname != NULL))
+   {
+      pNetIf[iface]->hostname = hostname;
+   }
+
+} /* IP_IF_HostnameSet */
+
+/*************************************************************************/
+/*  IP_IF_HostnameGet                                                    */
+/*                                                                       */
+/*  Return the hostname.                                                 */
+/*                                                                       */
+/*  In    : iface                                                        */
+/*  Out   : none                                                         */
+/*  Return: hostname / NULL                                              */
+/*************************************************************************/
+char *IP_IF_HostnameGet (uint8_t iface)
+{
+   char *name = NULL;
+
+   if ((iface < ETH_MAX_IFACE) && (pNetIf[iface] != NULL))
+   {
+      name = (char*)pNetIf[iface]->hostname;
+   }
+
+   return(name);
+} /* IP_IF_HostnameGet */
+
+/*************************************************************************/
 /*  IP_IF_StartupValuesGet                                               */
 /*                                                                       */
 /*  In    : iface, ipaddr, netmask, gw                                   */
 /*  Out   : ipaddr, netmask, gw                                          */
 /*  Return: none                                                         */
 /*************************************************************************/
-void IP_IF_StartupValuesGet (uint8_t iface, uint32_t *ipaddr, uint32_t *netmask, uint32_t *gw)
+void IP_IF_StartupValuesGet (uint8_t iface, ip_addr_t *ipaddr, ip_addr_t *netmask, ip_addr_t *gw)
 {
    if ((iface < ETH_MAX_IFACE) && (ipaddr != NULL) && (netmask != NULL) && (gw != NULL))
    {
-      *ipaddr  = StartupIPAddr[iface];
-      *netmask = StartupNETMask[iface];
-      *gw      = StartupGWAddr[iface]; 
+      ip_2_ip4(ipaddr)->addr  = StartupIPAddr[iface];
+      ip_2_ip4(netmask)->addr = StartupNETMask[iface];
+      ip_2_ip4(gw)->addr      = StartupGWAddr[iface];
    }
          
 } /* IP_IF_StartupValuesGet */

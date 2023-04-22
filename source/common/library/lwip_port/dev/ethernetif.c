@@ -1,5 +1,5 @@
 /**************************************************************************
-*  Copyright (c) 2018 by Michael Fischer (www.emb4fun.de).
+*  Copyright (c) 2018-2022 by Michael Fischer (www.emb4fun.de).
 *  All rights reserved.
 
 *  The source is partial based on the TI example.
@@ -11,9 +11,11 @@
 *  
 *  1. Redistributions of source code must retain the above copyright 
 *     notice, this list of conditions and the following disclaimer.
+*
 *  2. Redistributions in binary form must reproduce the above copyright
 *     notice, this list of conditions and the following disclaimer in the 
 *     documentation and/or other materials provided with the distribution.
+*
 *  3. Neither the name of the author nor the names of its contributors may 
 *     be used to endorse or promote products derived from this software 
 *     without specific prior written permission.
@@ -87,6 +89,7 @@
 #include "lwip\opt.h"
 #include "lwip\tcpip.h"
 #include "netif\etharp.h"
+#include "lwip\ethip6.h"
 #include "lwip\stats.h"
 #include "lwip\igmp.h"
 
@@ -394,7 +397,7 @@ static void cpsw_inst_config (struct cpswportif *cpswif)
  */
 static int cpsw_ale_entry_match_free (cpswinst_t *cpswinst)
 {
-   uint32_t ale_entry[ALE_ENTRY_NUM_WORDS];
+   unsigned int ale_entry[ALE_ENTRY_NUM_WORDS];
    int32_t  idx;
 
    /* Check which ALE entry is free starting from 0th entry */
@@ -424,7 +427,7 @@ static void cpsw_ale_unicastentry_set (cpswinst_t *cpswinst, uint32_t port_num, 
 {
    volatile uint32_t cnt;
    volatile int32_t idx;
-   uint32_t ale_entry[ALE_ENTRY_NUM_WORDS] = {0, 0, 0};
+   unsigned int     ale_entry[ALE_ENTRY_NUM_WORDS] = {0, 0, 0};
 
    for(cnt = 0; cnt < ETHARP_HWADDR_LEN; cnt++) 
    {
@@ -455,7 +458,7 @@ static void cpsw_ale_multicastentry_set (cpswinst_t *cpswinst, uint32_t portmask
 {
    volatile uint32_t cnt;
    volatile int32_t  idx;
-   uint32_t ale_entry[ALE_ENTRY_NUM_WORDS] = {0, 0, 0};
+   unsigned int      ale_entry[ALE_ENTRY_NUM_WORDS] = {0, 0, 0};
 
    idx = cpsw_ale_entry_match_free(cpswinst);
    if (idx < MAX_ALE_ENTRIES )
@@ -475,7 +478,7 @@ static void cpsw_ale_multicastentry_set (cpswinst_t *cpswinst, uint32_t portmask
 static void cpsw_ale_remove_all_entries (cpswinst_t *cpswinst, uint32_t start)
 {
    uint32_t idx;
-   uint32_t ale_entry[ALE_ENTRY_NUM_WORDS] = {0, 0, 0};
+   unsigned int ale_entry[ALE_ENTRY_NUM_WORDS] = {0, 0, 0};
 
    for (idx=start; idx<MAX_ALE_ENTRIES; idx++)
    {
@@ -667,13 +670,25 @@ static int cpsw_port_init (struct netif *netif)
    (void)netif;
    
    /* Get the MAC address */
-   EVMMACAddrGet(0, MACAddress);    
+#if !defined(USE_IP_DEFAULT_MAC_ADDR)
+   EVMMACAddrGet(0, MACAddress);
+
    cpswif->eth_addr[0] = MACAddress[5];
    cpswif->eth_addr[1] = MACAddress[4];
    cpswif->eth_addr[2] = MACAddress[3];
    cpswif->eth_addr[3] = MACAddress[2];
    cpswif->eth_addr[4] = MACAddress[1];
    cpswif->eth_addr[5] = MACAddress[0];
+#else
+   memcpy(MACAddress, netif->hwaddr, 6);
+
+   cpswif->eth_addr[0] = MACAddress[0];
+   cpswif->eth_addr[1] = MACAddress[1];
+   cpswif->eth_addr[2] = MACAddress[2];
+   cpswif->eth_addr[3] = MACAddress[3];
+   cpswif->eth_addr[4] = MACAddress[4];
+   cpswif->eth_addr[5] = MACAddress[5];
+#endif
    
    /* 
     * Initialize the hardware
@@ -694,8 +709,8 @@ static int cpsw_port_init (struct netif *netif)
    IntRegister(SYS_INT_3PGSWTXINT0, CPSWCore0TxIsr);
    
    /* Set the priority */
-   IntPrioritySet(SYS_INT_3PGSWTXINT0, 0, AINTC_HOSTINT_ROUTE_IRQ);
-   IntPrioritySet(SYS_INT_3PGSWRXINT0, 0, AINTC_HOSTINT_ROUTE_IRQ);
+   IntPrioritySet(SYS_INT_3PGSWTXINT0, CPU_ENET_PRIO, AINTC_HOSTINT_ROUTE_IRQ);
+   IntPrioritySet(SYS_INT_3PGSWRXINT0, CPU_ENET_PRIO, AINTC_HOSTINT_ROUTE_IRQ);
    
    /**
     * Initialize an instance only once. Port initialization will be
@@ -825,9 +840,9 @@ static void cpsw_tx_inthandler (void)
 */
 static void CPSWCore0RxIsr (void)
 {
-   TAL_CPU_IRQ_ENTER();
+   TAL_CPU_IRQ_ENTER();    /*lint !e717*/
    cpsw_rx_inthandler();
-   TAL_CPU_IRQ_EXIT();
+   TAL_CPU_IRQ_EXIT();     /*lint !e717*/
 }
 
 /*
@@ -835,9 +850,9 @@ static void CPSWCore0RxIsr (void)
 */
 static void CPSWCore0TxIsr (void)
 {
-   TAL_CPU_IRQ_ENTER();
+   TAL_CPU_IRQ_ENTER();    /*lint !e717*/
    cpsw_tx_inthandler();
-   TAL_CPU_IRQ_EXIT();   
+   TAL_CPU_IRQ_EXIT();     /*lint !e717*/
 }
 
 
@@ -1178,6 +1193,11 @@ static err_t low_level_init (struct netif *netif)
    /* Accept broadcast address, ARP traffic and Multicast */
    netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_ETHERNET;
    
+#if defined(LWIP_IPV6) && (LWIP_IPV6 != 0)
+   netif->flags |= NETIF_FLAG_MLD6;
+#endif
+
+
 #if (LWIP_IGMP >= 1)   
    /* Add IGMP support */   
    netif->flags |= NETIF_FLAG_IGMP;
@@ -1247,7 +1267,7 @@ static err_t low_level_output (struct netif *netif, struct pbuf *p)
       sz = MIN_PKT_LEN;
    }
 
-   bd->bufoff_len   = sz; //ETH_MAX_BUFF_LEN;
+   bd->bufoff_len   = (uint32_t)sz; //ETH_MAX_BUFF_LEN;
    bd->flags_pktlen = sz & CPDMA_BD_PKTLEN_MASK;
 
    /*
@@ -1360,7 +1380,7 @@ static void ethernetif_input (void *arg)
    struct pbuf    *p;
    struct netif   *netif = (struct netif*)arg;
    struct eth_hdr *ethhdr;
-   unsigned        Event;
+   uint32_t        Event;
    uint32_t        Checktime = OS_TimeGet();
 
    /* 
@@ -1397,8 +1417,11 @@ static void ethernetif_input (void *arg)
             
             switch (htons(ethhdr->type)) 
             {
-               /* IP or ARP packet? */
+               /* IP, IPv6 or ARP packet? */
                case ETHTYPE_IP:
+#if defined(LWIP_IPV6) && (LWIP_IPV6 != 0)
+               case ETHTYPE_IPV6:
+#endif
                case ETHTYPE_ARP:
                
                   /* full packet send to tcpip_thread to process */
@@ -1463,10 +1486,17 @@ err_t ethernetif_init (struct netif *netif)
    
    if (netif != NULL)
    {
+      /* Remove lint warning */
+      memset(RxBuf, 0x00, sizeof(RxBuf));
+      memset(TxBuf, 0x00, sizeof(TxBuf));
+   
       /* Descriptive abbreviation for this interface */
       netif->name[0] = IFNAME0;
       netif->name[1] = IFNAME1;
   
+      /* Copy MAC address */
+      memcpy(netif->hwaddr, netif->state, ETHARP_HWADDR_LEN);
+
       /* 
        * We directly use etharp_output() here to save a function call.
        * You can instead declare your own function an call etharp_output()
@@ -1476,6 +1506,10 @@ err_t ethernetif_init (struct netif *netif)
       netif->output     = etharp_output;
       netif->linkoutput = low_level_output;
   
+#if defined(LWIP_IPV6) && (LWIP_IPV6 != 0)
+      netif->output_ip6 = ethip6_output;
+#endif
+
       /* Initialize the hardware */
       error = low_level_init(netif);
       
