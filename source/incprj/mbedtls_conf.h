@@ -51,7 +51,7 @@
  *      include/mbedtls/bn_mul.h
  *
  * Required by:
- *      MBEDTLS_AESNI_C
+ *      MBEDTLS_AESNI_C (on some platforms)
  *      MBEDTLS_PADLOCK_C
  *
  * Comment to disable the use of assembly code.
@@ -868,12 +868,37 @@ extern void  mbedtls_free(void *ptr);
  * This is useful in non-threaded environments if you want to avoid blocking
  * for too long on ECC (and, hence, X.509 or SSL/TLS) operations.
  *
- * Uncomment this macro to enable restartable ECC computations.
+ * This option:
+ * - Adds xxx_restartable() variants of existing operations in the
+ *   following modules, with corresponding restart context types:
+ *   - ECP (for Short Weierstrass curves only): scalar multiplication (mul),
+ *     linear combination (muladd);
+ *   - ECDSA: signature generation & verification;
+ *   - PK: signature generation & verification;
+ *   - X509: certificate chain verification.
+ * - Adds mbedtls_ecdh_enable_restart() in the ECDH module.
+ * - Changes the behaviour of TLS 1.2 clients (not servers) when using the
+ *   ECDHE-ECDSA key exchange (not other key exchanges) to make all ECC
+ *   computations restartable:
+ *   - ECDH operations from the key exchange, only for Short Weierstrass
+ *     curves;
+ *   - verification of the server's key exchange signature;
+ *   - verification of the server's certificate chain;
+ *   - generation of the client's signature if client authentication is used,
+ *     with an ECC key/certificate.
+ *
+ * \note  In the cases above, the usual SSL/TLS functions, such as
+ *        mbedtls_ssl_handshake(), can now return
+ *        MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS.
  *
  * \note  This option only works with the default software implementation of
  *        elliptic curve functionality. It is incompatible with
- *        MBEDTLS_ECP_ALT, MBEDTLS_ECDH_XXX_ALT, MBEDTLS_ECDSA_XXX_ALT
- *        and MBEDTLS_ECDH_LEGACY_CONTEXT.
+ *        MBEDTLS_ECP_ALT, MBEDTLS_ECDH_XXX_ALT, MBEDTLS_ECDSA_XXX_ALT,
+ *        MBEDTLS_ECDH_LEGACY_CONTEXT, and MBEDTLS_USE_PSA_CRYPTO.
+ *
+ * Requires: MBEDTLS_ECP_C
+ *
+ * Uncomment this macro to enable restartable ECC computations.
  */
 //#define MBEDTLS_ECP_RESTARTABLE
 
@@ -1338,7 +1363,7 @@ extern void  mbedtls_free(void *ptr);
  * Include backtrace information with each allocated block.
  *
  * Requires: MBEDTLS_MEMORY_BUFFER_ALLOC_C
- *           GLIBC-compatible backtrace() an backtrace_symbols() support
+ *           GLIBC-compatible backtrace() and backtrace_symbols() support
  *
  * Uncomment this macro to include backtrace information
  */
@@ -1442,8 +1467,8 @@ extern void  mbedtls_free(void *ptr);
  * );
  * ```
  * The \c context value is initialized to 0 before the first call.
- * The function must fill the \c output buffer with \p output_size bytes
- * of random data and set \c *output_length to \p output_size.
+ * The function must fill the \c output buffer with \c output_size bytes
+ * of random data and set \c *output_length to \c output_size.
  *
  * Requires: MBEDTLS_PSA_CRYPTO_C
  *
@@ -1628,6 +1653,8 @@ extern void  mbedtls_free(void *ptr);
  * Enabling these APIs makes some SSL structures larger, as 64 extra bytes are
  * saved after the handshake to allow for more efficient serialization, so if
  * you don't need this feature you'll save RAM by disabling it.
+ *
+ * Requires: MBEDTLS_GCM_C or MBEDTLS_CCM_C or MBEDTLS_CHACHAPOLY_C
  *
  * Comment to disable the context serialization APIs.
  */
@@ -2314,7 +2341,7 @@ extern void  mbedtls_free(void *ptr);
  * Uncomment to enable use of ZLIB
  */
 //#define MBEDTLS_ZLIB_SUPPORT
-/* \} name SECTION: mbed TLS feature support */
+/** \} name SECTION: mbed TLS feature support */
 
 /**
  * \name SECTION: mbed TLS modules
@@ -2326,14 +2353,32 @@ extern void  mbedtls_free(void *ptr);
 /**
  * \def MBEDTLS_AESNI_C
  *
- * Enable AES-NI support on x86-64.
+ * Enable AES-NI support on x86-64 or x86-32.
+ *
+ * \note AESNI is only supported with certain compilers and target options:
+ * - Visual Studio 2013: supported.
+ * - GCC, x86-64, target not explicitly supporting AESNI:
+ *   requires MBEDTLS_HAVE_ASM.
+ * - GCC, x86-32, target not explicitly supporting AESNI:
+ *   not supported.
+ * - GCC, x86-64 or x86-32, target supporting AESNI: supported.
+ *   For this assembly-less implementation, you must currently compile
+ *   `library/aesni.c` and `library/aes.c` with machine options to enable
+ *   SSE2 and AESNI instructions: `gcc -msse2 -maes -mpclmul` or
+ *   `clang -maes -mpclmul`.
+ * - Non-x86 targets: this option is silently ignored.
+ * - Other compilers: this option is silently ignored.
+ *
+ * \note
+ * Above, "GCC" includes compatible compilers such as Clang.
+ * The limitations on target support are likely to be relaxed in the future.
  *
  * Module:  library/aesni.c
  * Caller:  library/aes.c
  *
- * Requires: MBEDTLS_HAVE_ASM
+ * Requires: MBEDTLS_HAVE_ASM (on some platforms, see note)
  *
- * This modules adds support for the AES-NI instructions on x86-64
+ * This modules adds support for the AES-NI instructions on x86.
  */
 //#define MBEDTLS_AESNI_C
 
@@ -2434,7 +2479,7 @@ extern void  mbedtls_free(void *ptr);
  *      MBEDTLS_TLS_PSK_WITH_RC4_128_SHA
  *
  * \warning   ARC4 is considered a weak cipher and its use constitutes a
- *            security risk. If possible, we recommend avoidng dependencies on
+ *            security risk. If possible, we recommend avoiding dependencies on
  *            it, and considering stronger ciphers instead.
  *
  */
@@ -2747,7 +2792,7 @@ extern void  mbedtls_free(void *ptr);
  *
  * PEM_PARSE uses DES/3DES for decrypting encrypted keys.
  *
- * \warning   DES is considered a weak cipher and its use constitutes a
+ * \warning   DES/3DES are considered weak ciphers and their use constitutes a
  *            security risk. We recommend considering stronger ciphers instead.
  */
 //#define MBEDTLS_DES_C
@@ -3039,7 +3084,7 @@ extern void  mbedtls_free(void *ptr);
  *
  * \note See also our Knowledge Base article about porting to a new
  * environment:
- * https://tls.mbed.org/kb/how-to/how-do-i-port-mbed-tls-to-a-new-environment-OS
+ * https://mbed-tls.readthedocs.io/en/latest/kb/how-to/how-do-i-port-mbed-tls-to-a-new-environment-OS
  *
  * Module:  library/net_sockets.c
  *
@@ -3409,7 +3454,8 @@ extern void  mbedtls_free(void *ptr);
  * Module:  library/ssl_ticket.c
  * Caller:
  *
- * Requires: MBEDTLS_CIPHER_C
+ * Requires: MBEDTLS_CIPHER_C &&
+ *           ( MBEDTLS_GCM_C || MBEDTLS_CCM_C || MBEDTLS_CHACHAPOLY_C )
  */
 #define MBEDTLS_SSL_TICKET_C
 
@@ -3465,7 +3511,7 @@ extern void  mbedtls_free(void *ptr);
  * contexts are not shared between threads. If you do intend to use contexts
  * between threads, you will need to enable this layer to prevent race
  * conditions. See also our Knowledge Base article about threading:
- * https://tls.mbed.org/kb/development/thread-safety-and-multi-threading
+ * https://mbed-tls.readthedocs.io/en/latest/kb/development/thread-safety-and-multi-threading
  *
  * Module:  library/threading.c
  *
@@ -3497,7 +3543,7 @@ extern void  mbedtls_free(void *ptr);
  *
  * \note See also our Knowledge Base article about porting to a new
  * environment:
- * https://tls.mbed.org/kb/how-to/how-do-i-port-mbed-tls-to-a-new-environment-OS
+ * https://mbed-tls.readthedocs.io/en/latest/kb/how-to/how-do-i-port-mbed-tls-to-a-new-environment-OS
  *
  * Module:  library/timing.c
  * Caller:  library/havege.c

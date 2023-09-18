@@ -1,13 +1,17 @@
 ***************************************************************************
-* Project: tinyelca-ea1062
+* Project: tinyelca
 * Name   : "An Embedded Local Certificate Authority."
 * Target : BeagleBone Black
-* Version: 20230422
+* Version: 20230918
 ***************************************************************************
-* Tools  : SEGGER Embedded Studio for ARM v7.12a
+* Tools  : SEGGER Embedded Studio for ARM v7.32
 ***************************************************************************
 * URL    : https://www.emb4fun.de/projects/telca/index.html
 ***************************************************************************
+
+= 18.09.2023
+   * Updated MbedTLS to v2.28.4
+   * Used SEGGER Embedded Studio for ARM v7.32.
 
 = 22.04.2023
    * Updated MbedTLS to v2.28.3
