@@ -125,7 +125,7 @@ static void *MEMMalloc (tal_mem_id ID, uint32_t dSize)
    mem_hdr_t *pPrev;
    mem_hdr_t *pMem = NULL;
    mem_hdr_t *pTmp;
-   
+
    TAL_CPU_DISABLE_ALL_INTS();
    
    if (pFreelist != NULL)
@@ -212,7 +212,7 @@ static void *MEMMalloc (tal_mem_id ID, uint32_t dSize)
       pMem->dListID = (uint32_t)ID;
       pMem->dObject = OBJ_IN_USE;
    }
-   
+
    TAL_CPU_ENABLE_ALL_INTS();
    
    return(p);
@@ -373,7 +373,7 @@ static void MEMFree (void *pBuffer)
       MemList[dListID].pFreelist = pFreelist;
 
    } /* end if (pBuffer != NULL) */
-
+   
 MEMFreeEnd:   
    
    TAL_CPU_ENABLE_ALL_INTS();
@@ -411,6 +411,9 @@ static void MEMAdd (tal_mem_id ID, void *pBuffer, uint32_t dSize)
       /* Align size to 16 */
       dRest  = dSize % MEM_ALIGN;
       dSize -= dRest;
+
+      /* Clear data first */
+      memset((void*)dAddress, 0x00, dSize);
 
       MemList[ID].dSize += dSize;
    
@@ -478,7 +481,7 @@ void tal_MEMInit (void)
    /* Get memory pointer */ 
    dAddr = (uint32_t)&TAL_HEAP_MEM2_START;
    dSize = ((uint32_t)(&TAL_HEAP_MEM2_END) - (uint32_t)(&TAL_HEAP_MEM2_START)) - 1;
-   
+
    MEMAdd(XM_ID_HEAP, (uint8_t*)dAddr, dSize);
 #endif   
    
@@ -486,7 +489,7 @@ void tal_MEMInit (void)
    MemList[XM_ID_HEAP].UsedRawMemory = 0;
 
    OS_SemaCreate(&Sema, 1, 1);
-
+   
    (void)dAddr;
    (void)dSize;
 

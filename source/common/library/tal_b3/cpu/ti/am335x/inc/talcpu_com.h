@@ -31,11 +31,6 @@
 *  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF 
 *  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
 *  SUCH DAMAGE.
-*
-***************************************************************************
-*  History:
-*
-*  14.10.2016  mifi  First Version for the BeagleBone Black (B3).
 **************************************************************************/
 #if !defined(__TALCPU_COM_H__)
 #define __TALCPU_COM_H__

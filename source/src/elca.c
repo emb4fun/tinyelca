@@ -1,5 +1,5 @@
 /**************************************************************************
-*  Copyright (c) 2021 by Michael Fischer (www.emb4fun.de).
+*  Copyright (c) 2021-2023 by Michael Fischer (www.emb4fun.de).
 *  All rights reserved.
 *
 *  Redistribution and use in source and binary forms, with or without 
@@ -2169,7 +2169,7 @@ static int cgi_rootca (HTTPD_SESSION *hs)
    
    if (STATUS_UNLOCKED == nELCAStatus)
    {
-      /* Output public key */ 
+      /* Output root certificate key */ 
       pChar = (char*)RootCert.raw;
       while (*pChar != 0)
       {
@@ -2206,7 +2206,7 @@ static int cgi_interca (HTTPD_SESSION *hs)
    
    if (STATUS_UNLOCKED == nELCAStatus)
    {
-      /* Output public key */ 
+      /* Output intermediate certificate */ 
       pChar = (char*)InterCert.raw;
       while (*pChar != 0)
       {
@@ -2275,7 +2275,7 @@ static int cgi_devcrt (HTTPD_SESSION *hs)
       /* Output data if id was found */
       if (pChar != NULL)
       {
-         /* Output public key */ 
+         /* Output device certificate */ 
          while (*pChar != 0)
          {
             s_putchar(hs->s_stream, *pChar);
@@ -2294,6 +2294,87 @@ static int cgi_devcrt (HTTPD_SESSION *hs)
    
    return(0);
 } /* cgi_devcrt */
+
+/*************************************************************************/
+/*  cgi_chaincrt                                                         */
+/*                                                                       */
+/*  In    : hs                                                           */
+/*  Out   : none                                                         */
+/*  Return: 0 = OK / -1 = ERROR                                          */
+/*************************************************************************/
+static int cgi_chaincrt (HTTPD_SESSION *hs)
+{
+   char *arg;
+   char *val;
+   
+   char   *pChar;
+   uint32_t id = 0;
+
+   OS_RES_LOCK(&Sema);
+
+   /* GET Method */   
+   for (arg = HttpArgParseFirst(&hs->s_req); arg; arg = HttpArgParseNext(&hs->s_req)) 
+   {
+      val = HttpArgValue(&hs->s_req);
+      if (val) 
+      {
+         if (strcmp(arg, "id") == 0) 
+         {
+            id = strtoul(val, NULL, 10);
+         }
+       }
+   }
+   
+
+   IP_WEBS_CGISendHeaderOctetStream(hs);
+   
+   if ((STATUS_UNLOCKED == nELCAStatus) && (id != 0))
+   {
+      /* Find device certificate */
+      pChar = NULL;
+      for (int x = 0; x < DEV_CRT_LIST_CNT; x++)
+      {
+         if (id == DevCRTList[x].id)
+         {
+            pChar = DevCRTList[x].crt_data;
+            break;
+         }
+      }
+      
+      /* Output data if id was found */
+      if (pChar != NULL)
+      {
+         /* Output device certificate */ 
+         while (*pChar != 0)
+         {
+            s_putchar(hs->s_stream, *pChar);
+            if (0x0A == *pChar)
+            {
+               s_flush(hs->s_stream);
+            }
+            pChar++;   
+         }
+         s_flush(hs->s_stream);
+         
+         /* Output intermediate certificate */ 
+         pChar = (char*)InterCert.raw;
+         while (*pChar != 0)
+         {
+            s_putchar(hs->s_stream, *pChar);
+            if (0x0A == *pChar)
+            {
+               s_flush(hs->s_stream);
+            }
+            pChar++;   
+         }
+         s_flush(hs->s_stream);
+      }         
+   }      
+   
+   OS_RES_FREE(&Sema);
+   
+   return(0);
+} /* cgi_chaincrt */
 
 /*************************************************************************/
 /*  cgi_crtcsr                                                           */
@@ -2423,6 +2504,7 @@ static const CGI_LIST_ENTRY CGIList[] =
    { "cgi-bin/elca_rootca.cgi",     cgi_rootca        },
    { "cgi-bin/elca_interca.cgi",    cgi_interca       },
    { "cgi-bin/elca_devcrt.cgi",     cgi_devcrt        },
+   { "cgi-bin/elca_chaincrt.cgi",   cgi_chaincrt      },
    { "cgi-bin/elca_crtcsr.cgi",     cgi_crtcsr        },
    
 

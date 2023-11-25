@@ -7,6 +7,7 @@
  <ExecutionProfileWindow/>
  <FrameBuffer>
   <FrameBufferWindow width="16843009" keepAspectRatio="0" zoomToFitWindow="0" addressSpace="" format="0" height="16843009" autoEvaluate="0" scaleFactor="1" refreshPeriod="0" name="tiny-elca_RAM Release" addressText="" accessByDisplayWidth="0"/>
+  <FrameBufferWindow width="16843009" keepAspectRatio="0" zoomToFitWindow="0" addressSpace="" format="0" height="16843009" autoEvaluate="0" scaleFactor="1" refreshPeriod="0" name="tiny-elca_RAM Debug" addressText="" accessByDisplayWidth="0"/>
  </FrameBuffer>
  <Memory1>
   <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="tiny-elca_RAM Debug" sizeText="" addressText=""/>
@@ -28,13 +29,6 @@
   <ProjectSessionItem path="tiny-elca"/>
   <ProjectSessionItem path="tiny-elca;tiny-elca"/>
   <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files"/>
-  <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files;common"/>
-  <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files;common;library"/>
-  <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files;common;library;base32"/>
-  <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files;common;library;ipweb"/>
-  <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files;common;library;lwip_port"/>
-  <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files;common;library;lwip_port;dev"/>
-  <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files;common;library;lwip_port;os"/>
   <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files;src"/>
  </Project>
  <Register1>
@@ -72,7 +66,7 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="590" useTextEdit="1" path="../src/main.c" left="0" top="574" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" path="../src/main.c" left="0" selected="1" top="0" codecName="Default"/>
  </Files>
- <EMStudioWindow activeProject="tiny-elca" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="RAM Release" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="D:/Projekte/GitHub/tinyelca/source/common/library/lwip_port/os" debugSearchPath="" autoConnectCapabilities="3199"/>
+ <EMStudioWindow activeProject="tiny-elca" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="RAM Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="D:/Projekte/GitHub/tinyelca/source/common/library/lwip_port/os" debugSearchPath="" autoConnectCapabilities="3199"/>
 </session>

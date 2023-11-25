@@ -2,12 +2,16 @@
 * Project: tinyelca
 * Name   : "An Embedded Local Certificate Authority."
 * Target : BeagleBone Black
-* Version: 20230926
+* Version: 20231125
 ***************************************************************************
 * Tools  : SEGGER Embedded Studio for ARM v7.32
 ***************************************************************************
 * URL    : https://www.emb4fun.de/projects/telca/index.html
 ***************************************************************************
+
+= Version 1.03 / 1.02, 25.11.2023
+   * Updated MbedTLS to v2.28.5
+   * Added support for chained certificate.
 
 = 26.09.2023
    * New lwIP version STABLE-2_2_0_RELEASE used.

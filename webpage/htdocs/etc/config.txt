@@ -6,7 +6,7 @@ Name = "TinyELCA"
 [VERSION]
 Digit1 = 1
 Digit2 = 0
-Digit3 = 0
+Digit3 = 2
 
 
 [NETWORK]
