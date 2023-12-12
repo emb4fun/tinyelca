@@ -66,7 +66,7 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" path="../src/main.c" left="0" selected="1" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="586" useTextEdit="1" path="../src/main.c" left="0" selected="1" top="571" codecName="Default"/>
  </Files>
- <EMStudioWindow activeProject="tiny-elca" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="RAM Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="D:/Projekte/GitHub/tinyelca/source/common/library/lwip_port/os" debugSearchPath="" autoConnectCapabilities="3199"/>
+ <EMStudioWindow activeProject="tiny-elca" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="RAM Release" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="D:/Projekte/GitHub/tinyelca/source/common/library/lwip_port/os" debugSearchPath="" autoConnectCapabilities="3199"/>
 </session>

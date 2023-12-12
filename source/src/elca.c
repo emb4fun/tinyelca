@@ -522,6 +522,7 @@ static int LoadCAKey (void)
    
    
    mbedtls_pk_init(&InterKey);
+   mbedtls_ctr_drbg_init(&ctr_drbg);
    
    nCAKeyNotFound = 1;
 
@@ -538,7 +539,8 @@ static int LoadCAKey (void)
       size++;      
       
       /* Check if this is a valid key */
-      rc = mbedtls_pk_parse_key(&InterKey, data, (size_t)size, NULL, 0);
+      rc = mbedtls_pk_parse_key(&InterKey, data, (size_t)size, NULL, 0,
+                                mbedtls_ctr_drbg_random, &ctr_drbg);
       if (rc != 0) GOTO_END(ELCA_ERROR);
       mbedtls_pk_free(&InterKey);
       
@@ -632,7 +634,8 @@ static int LoadCAKey (void)
          
       /* Check if this is a valid key */
       mbedtls_pk_init(&InterKey);
-      rc = mbedtls_pk_parse_key(&InterKey, &data[AES_IV_BYTES_CNT], (size_t)size, NULL, 0);
+      rc = mbedtls_pk_parse_key(&InterKey, &data[AES_IV_BYTES_CNT], (size_t)size, NULL, 0,
+                                mbedtls_ctr_drbg_random, &ctr_drbg);
       if (rc != 0) GOTO_END(ELCA_ERROR);
       
       /* No error */   
@@ -643,6 +646,7 @@ end:
 
    if (rc != 0)
    {
+      mbedtls_ctr_drbg_free(&ctr_drbg);
       mbedtls_pk_free(&InterKey);
    } 
 
@@ -1020,7 +1024,7 @@ static int CRTCreate (char *pCSR, char *crt_data, size_t crt_data_size, uint32_t
    rc = mbedtls_mpi_read_string(&serial, 16, serial_name);
    if (rc != 0) GOTO_END(rc);
 
-   rc = mbedtls_x509write_crt_set_serial(&crt, &serial);
+   rc = mbedtls_x509write_crt_set_serial_raw(&crt, serial_raw, sizeof(serial_raw)); 
    if (rc != 0) GOTO_END(rc);
 
    /* Validity */
@@ -1363,32 +1367,19 @@ end:
 /*************************************************************************/
 static int ELCACreateKey (char *pPass, size_t PassLen)
 {
-   int                      rc = ELCA_ERROR;
-   int                      ret;
-   mbedtls_md_context_t     sha2_ctx;
-   const mbedtls_md_info_t *info_sha2;
+   int rc = ELCA_ERROR;
+   int ret;
 
-   mbedtls_md_init(&sha2_ctx);
-
-   info_sha2 = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-   if (NULL == info_sha2) goto exit;
-
-   if ((ret = mbedtls_md_setup(&sha2_ctx, info_sha2, 1)) != 0) goto exit;
-   
-   ret = mbedtls_pkcs5_pbkdf2_hmac(&sha2_ctx, 
-                                   (uint8_t*)pPass, PassLen, 
-                                   ELCASalt, sizeof(ELCASalt),
-                                   4096,
-                                   sizeof(ELCAKey), ELCAKey);
+   ret = mbedtls_pkcs5_pbkdf2_hmac_ext(MBEDTLS_MD_SHA256, 
+                                       (uint8_t*)pPass, PassLen, 
+                                       ELCASalt, sizeof(ELCASalt),
+                                       4096,
+                                       sizeof(ELCAKey), ELCAKey);
    if (0 == ret)
    {
       rc = ELCA_OK;
    }                                    
 
-exit:
-
-   mbedtls_md_free(&sha2_ctx);
-   
    return(rc);
 } /* ELCACreateKey */
 
@@ -2520,29 +2511,19 @@ static const CGI_LIST_ENTRY CGIList[] =
 /*************************************************************************/
 static void HandleCRTReq (elca_msg_t *pRxMsg, elca_msg_t *pTxMsg)
 {
-   int                        rc = ELCA_RPC_ERROR;
-   mbedtls_md_context_t       sha2_ctx;
-   const mbedtls_md_info_t   *info_sha2;
-   mbedtls_aes_context        ctx;
-   uint8_t                    Key[32];
+   int                 rc = ELCA_RPC_ERROR;
+   mbedtls_aes_context ctx;
+   uint8_t             Key[32];
    
    /* Check if ELCA is unlocked */ 
    if (nELCAStatus != STATUS_UNLOCKED) GOTO_END(ELCA_RPC_ERR_LOCKED);
 
    /* Create AES key */
-   info_sha2 = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-   if (NULL == info_sha2) GOTO_END(ELCA_RPC_ERR_CRT_GEN);
-   
-   mbedtls_md_init(&sha2_ctx);
-   rc = mbedtls_md_setup(&sha2_ctx, info_sha2, 1);
-   if (rc != 0) GOTO_END(ELCA_RPC_ERR_CRT_GEN);
-   
-   rc = mbedtls_pkcs5_pbkdf2_hmac(&sha2_ctx, 
+   rc = mbedtls_pkcs5_pbkdf2_hmac_ext(MBEDTLS_MD_SHA256, 
                                   (uint8_t*)PSK, strlen((char*)PSK), 
                                   NULL, 0,
                                   4096,
                                   sizeof(Key), Key);
-   mbedtls_md_free(&sha2_ctx);
    if (rc != 0) GOTO_END(ELCA_RPC_ERR_CRT_GEN);
    
    /* Decode CSR data */
