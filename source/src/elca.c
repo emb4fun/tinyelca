@@ -257,7 +257,7 @@ static uint8_t DevCrtListIndex = 0;
 
 /*lint -save -e717 -e737*/
 
-static int mbedtls_x509write_crt_set_subject_alternative_name (mbedtls_x509write_cert *pCRT, SAN_TAG *pSanList, int SanCntMax)
+static int mbedtls_x509write_crt_set_subject_alternative_name_ext (mbedtls_x509write_cert *pCRT, SAN_TAG *pSanList, int SanCntMax)
 {
    int	         ret = 0;
    SAN_TAG       *cur;
@@ -312,7 +312,7 @@ static int mbedtls_x509write_crt_set_subject_alternative_name (mbedtls_x509write
    mbedtls_free(buf);
    
    return(ret);
-} /* mbedtls_x509write_crt_set_subject_alternative_name */
+} /* mbedtls_x509write_crt_set_subject_alternative_name_ext */
 
 /*lint -restore*/
 
@@ -1043,7 +1043,7 @@ static int CRTCreate (char *pCSR, char *crt_data, size_t crt_data_size, uint32_t
    if (rc != 0) GOTO_END(rc);
 
    /* Subject alternative names */
-   rc = mbedtls_x509write_crt_set_subject_alternative_name(&crt, san_list, san_cnt);
+   rc = mbedtls_x509write_crt_set_subject_alternative_name_ext(&crt, san_list, san_cnt);
    if (rc != 0) GOTO_END(rc);
 
    /* Extended key usage */

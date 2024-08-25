@@ -66,7 +66,9 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="586" useTextEdit="1" path="../src/main.c" left="0" selected="1" top="571" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="586" useTextEdit="1" path="../src/main.c" left="0" top="571" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="62" y="1045" useTextEdit="1" path="../src/elca.c" left="0" top="1026" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="404" useTextEdit="1" path="../common/library/mbedtls/library/pkparse.c" left="0" selected="1" top="385" codecName="Default"/>
  </Files>
- <EMStudioWindow activeProject="tiny-elca" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="RAM Release" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="D:/Projekte/GitHub/tinyelca/source/common/library/lwip_port/os" debugSearchPath="" autoConnectCapabilities="3199"/>
+ <EMStudioWindow activeProject="tiny-elca" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="RAM Release" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="D:/Projekte/GitHub/tinyelca/source/common/library/mbedtls/library" debugSearchPath="" autoConnectCapabilities="3199"/>
 </session>

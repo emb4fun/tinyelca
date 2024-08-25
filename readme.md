@@ -1,5 +1,3 @@
-**Note:** There is now the [TinyELCA2S3](https://github.com/emb4fun/tinyelca2s3) application, which combines the functionalities of TinyELCA                   and TinyES3.
-
 # README for TinyELCA
 
 "To enable HTTPS on your website, you need to get a certificate (a type of file) from a 
