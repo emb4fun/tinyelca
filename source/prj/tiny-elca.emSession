@@ -29,6 +29,9 @@
   <ProjectSessionItem path="tiny-elca"/>
   <ProjectSessionItem path="tiny-elca;tiny-elca"/>
   <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files"/>
+  <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files;common"/>
+  <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files;common;library"/>
+  <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files;common;library;mbedtls"/>
   <ProjectSessionItem path="tiny-elca;tiny-elca;Source Files;src"/>
  </Project>
  <Register1>
@@ -66,9 +69,11 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="586" useTextEdit="1" path="../src/main.c" left="0" top="571" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="62" y="1045" useTextEdit="1" path="../src/elca.c" left="0" top="1026" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="404" useTextEdit="1" path="../common/library/mbedtls/library/pkparse.c" left="0" selected="1" top="385" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="586" useTextEdit="1" path="../src/main.c" left="0" selected="1" top="571" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="44" y="305" useTextEdit="1" path="../src/elca.c" left="0" top="285" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="404" useTextEdit="1" path="../common/library/mbedtls/library/pkparse.c" left="0" top="385" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="1" y="31" useTextEdit="1" path="../common/library/fatfs/src/ff.h" left="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="30" y="682" useTextEdit="1" path="../common/library/tal_b3/board/b3/src/fatfs_diskio.c" left="0" top="662" codecName="Default"/>
  </Files>
- <EMStudioWindow activeProject="tiny-elca" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="RAM Release" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="D:/Projekte/GitHub/tinyelca/source/common/library/mbedtls/library" debugSearchPath="" autoConnectCapabilities="3199"/>
+ <EMStudioWindow activeProject="tiny-elca" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="RAM Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="D:/Projekte/GitHub/tinyelca/source/common/library/mbedtls/library" debugSearchPath="" autoConnectCapabilities="3199"/>
 </session>
