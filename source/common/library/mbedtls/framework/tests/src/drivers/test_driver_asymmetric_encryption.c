@@ -9,18 +9,20 @@
 
 #if defined(PSA_CRYPTO_DRIVER_TEST)
 #include "psa/crypto.h"
+
+#if !defined(MBEDTLS_VERSION_MAJOR) || MBEDTLS_VERSION_MAJOR >= 4
+#include "mbedtls/private/rsa.h"
+#else
 #include "mbedtls/rsa.h"
+#endif
+
 #include "psa_crypto_rsa.h"
 #include "string.h"
 #include "test/drivers/asymmetric_encryption.h"
 #include "test/drivers/key_management.h"
 
 #if defined(MBEDTLS_TEST_LIBTESTDRIVER1)
-#if MBEDTLS_VERSION_MAJOR < 4
-#include "libtestdriver1/library/psa_crypto_rsa.h"
-#else
-#include "libtestdriver1/tf-psa-crypto/drivers/builtin/src/psa_crypto_rsa.h"
-#endif
+#include LIBTESTDRIVER1_PSA_DRIVER_INTERNAL_HEADER(psa_crypto_rsa.h)
 #endif
 
 #define PSA_RSA_KEY_PAIR_MAX_SIZE \

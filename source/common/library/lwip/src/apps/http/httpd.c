@@ -1848,7 +1848,7 @@ http_post_request(struct pbuf *inp, struct http_state *hs,
           /* adjust length of HTTP header passed to application */
           const char *hdr_start_after_uri = uri_end + 1;
           u16_t hdr_len = (u16_t)LWIP_MIN(data_len, crlfcrlf + 4 - data);
-          u16_t hdr_data_len = (u16_t)LWIP_MIN(data_len, crlfcrlf + 4 - hdr_start_after_uri);
+          u16_t hdr_data_len = (u16_t)LWIP_MIN(data_len, crlfcrlf - hdr_start_after_uri);
           u8_t post_auto_wnd = 1;
           http_uri_buf[0] = 0;
           /* trim http header */
@@ -1995,9 +1995,7 @@ http_parse_request(struct pbuf *inp, struct http_state *hs, struct altcp_pcb *pc
 #if LWIP_HTTPD_SUPPORT_REQUESTLIST
   u16_t clen;
 #endif /* LWIP_HTTPD_SUPPORT_REQUESTLIST */
-#if LWIP_HTTPD_SUPPORT_POST
   err_t err;
-#endif /* LWIP_HTTPD_SUPPORT_POST */
 
   LWIP_UNUSED_ARG(pcb); /* only used for post */
   LWIP_ASSERT("p != NULL", p != NULL);
@@ -2131,7 +2129,28 @@ http_parse_request(struct pbuf *inp, struct http_state *hs, struct altcp_pcb *pc
           } else
 #endif /* LWIP_HTTPD_SUPPORT_POST */
           {
-            return http_find_file(hs, uri, is_09);
+#if LWIP_HTTPD_HEADERS_BEFORE_FILE_OPEN
+            void *obj;
+            char replace_uri[LWIP_HTTPD_HEADERS_URI_REPLACE_LEN + 1];
+            replace_uri[0] = 0;
+            obj = httpd_headers_before_file_open(crlf + 2, (uint16_t)(data_len - (crlf + 2 - data)),
+                                                uri, replace_uri,
+                                                LWIP_HTTPD_HEADERS_URI_REPLACE_LEN);
+            if (replace_uri[0] != 0) {
+              uri = replace_uri;
+            }
+#endif /* LWIP_HTTPD_HEADERS_BEFORE_FILE_OPEN */
+            err = http_find_file(hs, uri, is_09);
+#if LWIP_HTTPD_HEADERS_AFTER_FILE_OPEN
+            if (err == ERR_OK) {
+              httpd_headers_after_file_open(hs->handle, crlf + 2, (uint16_t)(data_len - (crlf + 2 - data))
+#if LWIP_HTTPD_HEADERS_BEFORE_FILE_OPEN
+                                             , obj
+#endif /* LWIP_HTTPD_HEADERS_BEFORE_FILE_OPEN */
+                                            );
+            }
+#endif /* LWIP_HTTPD_HEADERS_AFTER_FILE_OPEN */
+            return err;
           }
         }
       } else {

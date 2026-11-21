@@ -937,6 +937,27 @@ tcp_process(struct tcp_pcb *pcb)
           tcp_rexmit(pcb);
         }
       } else if (flags & TCP_ACK) {
+        /* Check sequence-number acceptability before completing the
+         * handshake or notifying the application. */
+        if (pcb->rcv_wnd == 0) {
+          /* Window cannot be 0 here, just drop the packet. */
+          LWIP_DEBUGF(TCP_DEBUG, ("TCP has zero rcv_wnd in SYN_RCVD.\n"));
+          return ERR_OK;
+        } else {
+          u32_t wnd_end = pcb->rcv_nxt + pcb->rcv_wnd - 1;
+          u32_t seq_end = seqno + tcplen - 1;
+
+          if (tcplen == 0) {
+            if (!TCP_SEQ_BETWEEN(seqno, pcb->rcv_nxt, wnd_end)) {
+              tcp_ack_now(pcb);
+              return ERR_OK;
+            }
+          } else if (!TCP_SEQ_BETWEEN(seqno, pcb->rcv_nxt, wnd_end) &&
+                     !TCP_SEQ_BETWEEN(seq_end, pcb->rcv_nxt, wnd_end)) {
+            tcp_ack_now(pcb);
+            return ERR_OK;
+          }
+        }
         /* expected ACK number? */
         if (TCP_SEQ_BETWEEN(ackno, pcb->lastack + 1, pcb->snd_nxt)) {
           pcb->state = ESTABLISHED;
@@ -1516,6 +1537,14 @@ tcp_receive(struct tcp_pcb *pcb)
               /* inseg cannot have FIN here (already processed above) */
               if ((TCPH_FLAGS(next->tcphdr) & TCP_FIN) != 0 &&
                   (TCPH_FLAGS(inseg.tcphdr) & TCP_SYN) == 0) {
+                /* Copying the FIN consumes one more sequence number. If inseg
+                   was already trimmed to fill the receive window, that extra
+                   byte would push tcplen past rcv_wnd and underflow the window
+                   update below. Leave the FIN segment on ooseq to be processed
+                   once the window has advanced. */
+                if (tcplen >= pcb->rcv_wnd) {
+                  break;
+                }
                 TCPH_SET_FLAG(inseg.tcphdr, TCP_FIN);
                 tcplen = TCP_TCPLEN(&inseg);
               }
@@ -1651,6 +1680,20 @@ tcp_receive(struct tcp_pcb *pcb)
         /* We get here if the incoming segment is out-of-sequence. */
 
 #if TCP_QUEUE_OOSEQ
+        /* The segment start was checked against the receive window, but its
+         * right edge may still extend beyond it. Trim before queuing so that
+         * dequeuing the segment cannot consume more than the remaining window. */
+         right_wnd_edge = pcb->rcv_nxt + pcb->rcv_wnd - seqno;
+         if ((TCPH_FLAGS(inseg.tcphdr) & TCP_FIN) && (inseg.len >= right_wnd_edge)) {
+           /* FIN consumes one sequence number after the payload. */
+           TCPH_FLAGS_SET(inseg.tcphdr, TCPH_FLAGS(inseg.tcphdr) & ~(unsigned int)TCP_FIN);
+         }
+         if (inseg.len > right_wnd_edge) {
+           inseg.len = (u16_t)right_wnd_edge;
+           pbuf_realloc(inseg.p, inseg.len);
+         }
+         tcplen = TCP_TCPLEN(&inseg);
+
         /* We queue the segment on the ->ooseq queue. */
         if (pcb->ooseq == NULL) {
           pcb->ooseq = tcp_seg_copy(&inseg);
@@ -1904,6 +1947,10 @@ static u8_t
 tcp_get_next_optbyte(void)
 {
   u16_t optidx = tcp_optidx++;
+  if (optidx >= tcphdr_optlen) {
+    /* Return 0 for any excess reads (like length fields) */
+    return LWIP_TCP_OPT_EOL;
+  }
   if ((tcphdr_opt2 == NULL) || (optidx < tcphdr_opt1len)) {
     u8_t *opts = (u8_t *)tcphdr + TCP_HLEN;
     return opts[optidx];
@@ -1993,17 +2040,17 @@ tcp_parseopt(struct tcp_pcb *pcb)
             return;
           }
           /* TCP timestamp option with valid length */
-          tsval = tcp_get_next_optbyte();
-          tsval |= (tcp_get_next_optbyte() << 8);
+          tsval = (tcp_get_next_optbyte() << 24);
           tsval |= (tcp_get_next_optbyte() << 16);
-          tsval |= (tcp_get_next_optbyte() << 24);
+          tsval |= (tcp_get_next_optbyte() << 8);
+          tsval |= tcp_get_next_optbyte();
           if (flags & TCP_SYN) {
-            pcb->ts_recent = lwip_ntohl(tsval);
+            pcb->ts_recent = tsval;
             /* Enable sending timestamps in every segment now that we know
                the remote host supports it. */
             tcp_set_flags(pcb, TF_TIMESTAMP);
           } else if (TCP_SEQ_BETWEEN(pcb->ts_lastacksent, seqno, seqno + tcplen)) {
-            pcb->ts_recent = lwip_ntohl(tsval);
+            pcb->ts_recent = tsval;
           }
           /* Advance to next option (6 bytes already read) */
           tcp_optidx += LWIP_TCP_OPT_LEN_TS - 6;

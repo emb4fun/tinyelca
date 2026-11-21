@@ -15,6 +15,8 @@
 #ifndef PSA_MEMORY_POISONING_WRAPPERS_H
 #define PSA_MEMORY_POISONING_WRAPPERS_H
 
+#include "build_info.h"
+
 #include "psa/crypto.h"
 
 #include "test/memory.h"

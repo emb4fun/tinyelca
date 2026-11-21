@@ -13,12 +13,7 @@
 #ifndef TEST_HELPERS_H
 #define TEST_HELPERS_H
 
-/* Most fields of publicly available structs are private and are wrapped with
- * MBEDTLS_PRIVATE macro. This define allows tests to access the private fields
- * directly (without using the MBEDTLS_PRIVATE wrapper). */
-#define MBEDTLS_ALLOW_PRIVATE_ACCESS
-
-#include "mbedtls/build_info.h"
+#include "build_info.h"
 
 #if defined(__SANITIZE_ADDRESS__) /* gcc -fsanitize=address */
 #  define MBEDTLS_TEST_HAVE_ASAN
@@ -51,7 +46,13 @@
 #include <stdint.h>
 
 #if defined(MBEDTLS_BIGNUM_C)
+
+#if !defined(MBEDTLS_VERSION_MAJOR) || MBEDTLS_VERSION_MAJOR >= 4
+#include "mbedtls/private/bignum.h"
+#else
 #include "mbedtls/bignum.h"
+#endif
+
 #endif
 
 /** The type of test case arguments that contain binary data. */
@@ -146,6 +147,25 @@ void mbedtls_test_get_line1(char *line);
  */
 void mbedtls_test_get_line2(char *line);
 
+/**
+ * \brief           Get a copy of the test result information.
+ *
+ * \param[out] out  On output, contains a copy of the current test info.
+ */
+void mbedtls_test_info_save(mbedtls_test_info_t *out);
+
+/**
+ * \brief           Overwrite the test result information.
+ *                  This is intended for some unusual scenarios.
+ *                  You probably shouldn't use this in a test function.
+ *
+ * \param[in] replacement
+ *                  The test info to use instead of the current one.
+ *                  The function copies the data, so the pointer does
+ *                  not need to be valid after this function returns.
+ */
+void mbedtls_test_info_overwrite(const mbedtls_test_info_t *replacement);
+
 #if defined(MBEDTLS_TEST_MUTEX_USAGE)
 /**
  * \brief           Get the current mutex usage error message
@@ -165,6 +185,30 @@ const char *mbedtls_test_get_mutex_usage_error(void);
  */
 void mbedtls_test_set_mutex_usage_error(const char *msg);
 #endif
+
+/**
+ * \brief           Check whether the given buffer is all-bits-zero.
+ *
+ * \param[in] buf   Pointer to the buffer to check.
+ * \param size      Buffer size in bytes.
+ *
+ * \retval 0        The given buffer has a nonzero byte.
+ * \retval 1        The given buffer is all-bits-zero (this includes the case
+ *                  of an empty buffer).
+ */
+int mbedtls_test_buffer_is_all_zero(const uint8_t *buf, size_t size);
+
+/** Check whether the object at the given address is all-bits-zero.
+ *
+ * \param[in] ptr   A pointer to the object to check.
+ *                  This macro parameter may be evaluated more than once.
+ *
+ * \retval 0        The given object has a nonzero byte.
+ * \retval 1        The given object is all-bits-zero (this includes the case
+ *                  of an empty buffer).
+ */
+#define MBEDTLS_TEST_OBJECT_IS_ALL_ZERO(ptr)    \
+    (mbedtls_test_buffer_is_all_zero((const uint8_t *) (ptr), sizeof(*(ptr))))
 
 #if defined(MBEDTLS_BIGNUM_C)
 
@@ -209,6 +253,19 @@ void mbedtls_test_platform_teardown(void);
  * \param filename  Filename where the failure originated.
  */
 void mbedtls_test_fail(const char *test, int line_no, const char *filename);
+
+/**
+ * \brief           Record the current test case as a failure
+ *                  and show the value of errno.
+ *
+ *                  This function is usually called via #TEST_ASSERT_ERRNO.
+ *
+ * \param test      Description of the failure or assertion that failed. This
+ *                  MUST be a string literal.
+ * \param line_no   Line number where the failure originated.
+ * \param filename  Filename where the failure originated.
+ */
+void mbedtls_test_fail_errno(const char *test, int line_no, const char *filename);
 
 /**
  * \brief           Record the current test case as skipped.

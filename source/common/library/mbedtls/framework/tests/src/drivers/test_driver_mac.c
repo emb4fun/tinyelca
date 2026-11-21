@@ -13,11 +13,7 @@
 #include "test/drivers/mac.h"
 
 #if defined(MBEDTLS_TEST_LIBTESTDRIVER1)
-#if MBEDTLS_VERSION_MAJOR < 4
-#include "libtestdriver1/library/psa_crypto_mac.h"
-#else
-#include "libtestdriver1/tf-psa-crypto/drivers/builtin/src/psa_crypto_mac.h"
-#endif
+#include LIBTESTDRIVER1_PSA_DRIVER_INTERNAL_HEADER(psa_crypto_mac.h)
 #endif
 
 mbedtls_test_driver_mac_hooks_t mbedtls_test_driver_mac_hooks =
@@ -83,6 +79,9 @@ psa_status_t mbedtls_test_transparent_mac_sign_setup(
     if (mbedtls_test_driver_mac_hooks.forced_status != PSA_SUCCESS) {
         mbedtls_test_driver_mac_hooks.driver_status =
             mbedtls_test_driver_mac_hooks.forced_status;
+    } else if (!MBEDTLS_TEST_OBJECT_IS_ALL_ZERO(operation)) {
+        mbedtls_test_driver_mac_hooks.driver_status =
+            PSA_ERROR_TEST_DETECTED_BAD_INITIALIZATION;
     } else {
 #if defined(MBEDTLS_TEST_LIBTESTDRIVER1) && \
         defined(LIBTESTDRIVER1_MBEDTLS_PSA_BUILTIN_MAC)
@@ -120,6 +119,9 @@ psa_status_t mbedtls_test_transparent_mac_verify_setup(
     if (mbedtls_test_driver_mac_hooks.forced_status != PSA_SUCCESS) {
         mbedtls_test_driver_mac_hooks.driver_status =
             mbedtls_test_driver_mac_hooks.forced_status;
+    } else if (!MBEDTLS_TEST_OBJECT_IS_ALL_ZERO(operation)) {
+        mbedtls_test_driver_mac_hooks.driver_status =
+            PSA_ERROR_TEST_DETECTED_BAD_INITIALIZATION;
     } else {
 #if defined(MBEDTLS_TEST_LIBTESTDRIVER1) && \
         defined(LIBTESTDRIVER1_MBEDTLS_PSA_BUILTIN_MAC)
@@ -309,6 +311,9 @@ psa_status_t mbedtls_test_opaque_mac_sign_setup(
     if (mbedtls_test_driver_mac_hooks.forced_status != PSA_SUCCESS) {
         mbedtls_test_driver_mac_hooks.driver_status =
             mbedtls_test_driver_mac_hooks.forced_status;
+    } else if (!MBEDTLS_TEST_OBJECT_IS_ALL_ZERO(operation)) {
+        mbedtls_test_driver_mac_hooks.driver_status =
+            PSA_ERROR_TEST_DETECTED_BAD_INITIALIZATION;
     } else {
         (void) operation;
         (void) attributes;
@@ -333,6 +338,9 @@ psa_status_t mbedtls_test_opaque_mac_verify_setup(
     if (mbedtls_test_driver_mac_hooks.forced_status != PSA_SUCCESS) {
         mbedtls_test_driver_mac_hooks.driver_status =
             mbedtls_test_driver_mac_hooks.forced_status;
+    } else if (!MBEDTLS_TEST_OBJECT_IS_ALL_ZERO(operation)) {
+        mbedtls_test_driver_mac_hooks.driver_status =
+            PSA_ERROR_TEST_DETECTED_BAD_INITIALIZATION;
     } else {
         (void) operation;
         (void) attributes;

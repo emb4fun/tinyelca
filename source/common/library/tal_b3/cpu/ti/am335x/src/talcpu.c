@@ -38,7 +38,6 @@
 /*  Include                                                              */
 /*=======================================================================*/
 #include <stdlib.h>
-#include <intrinsics.h>
 #include "tal.h"
 
 #include "soc_AM335x.h"
@@ -119,13 +118,6 @@ static void SysTickTimer (void)
    TAL_CPU_IRQ_EXIT();
 #endif
 
-#if defined(RTOS_UCOS3)
-   /* Clear the status of the interrupt flags */
-   DMTimerIntStatusClear(SOC_DMTIMER_2_REGS, DMTIMER_INT_OVF_IT_FLAG);
-
-   OSTimeTick();
-#endif
-   
 } /* SysTickTimer */
 
 /*************************************************************************/
@@ -688,6 +680,18 @@ static void EnableL3L4Uart0Clocks (void)
 
 } /* EnableL3L4Uart0Clocks */
 
+/*************************************************************************/
+/*  GPMCInit                                                             */
+/*                                                                       */
+/*  In    : none                                                         */
+/*  Out   : none                                                         */
+/*  Return: none                                                         */
+/*************************************************************************/
+void __attribute__((weak)) GPMCInit (void)
+{
+   /* Only an empty function */
+} /* GPMCInit */
+
 /*=======================================================================*/
 /*  All code exported                                                    */
 /*=======================================================================*/
@@ -724,9 +728,6 @@ void tal_CPUInit (void)
        *    mcr p15, 0, r0, c1, c0, 0      Write MMU control register
        */
 
-      /* GPMC initialization */
-      GPMCClkConfig();
-   
       /* Enable L3, L4 and UART0 clocks */
       EnableL3L4Uart0Clocks();
    
@@ -749,7 +750,12 @@ void tal_CPUInit (void)
       dValue = tal_CPUGetFrequencyM6();   /*lint !e838*/
 
       (void)dValue;
+
+      /* GPMC initialization */
+      GPMCClkConfig();
+      GPMCInit();      
    
+      /* RNG initialization */
       CPUGetRandomData();
    }      
 
@@ -1198,11 +1204,12 @@ void tal_CPUReboot (void)
 /*                                                                       */
 /*  In    : none                                                         */
 /*  Out   : none                                                         */
-/*  Return: none                                                         */
+/*  Return: TAL_OK                                                       */
 /*************************************************************************/
-void tal_CPURngInit (void)
+TAL_RESULT tal_CPURngInit (void)
 {
    /* Empty function */
+   return(TAL_OK);
 } /* tal_CPURngInit */
    
 /*************************************************************************/
@@ -1212,11 +1219,12 @@ void tal_CPURngInit (void)
 /*                                                                       */
 /*  In    : none                                                         */
 /*  Out   : none                                                         */
-/*  Return: none                                                         */
+/*  Return: TAL_OK                                                       */
 /*************************************************************************/
-void tal_CPURngDeInit (void)
+TAL_RESULT tal_CPURngDeInit (void)
 {
    /* Empty function */
+   return(TAL_OK);
 } /* tal_CPURngDeInit */
    
 /*************************************************************************/
@@ -1292,119 +1300,5 @@ void CPU_IRQHandler (void)
    HWREG(SOC_AINTC_REGS + INTC_CONTROL) = 1;                         
 
 } /* CPU_IRQHandler */
-
-#if defined(RTOS_UCOS3)
-/*************************************************************************/
-/*  Name  : OS_CPU_ExceptHndlr                                           */
-/*                                                                       */
-/*  ARM interrupt / exception handler.                                   */
-/*                                                                       */
-/*  In    : src_id                                                       */
-/*  Out   : none                                                         */
-/*  Return: none                                                         */
-/*************************************************************************/
-void OS_CPU_ExceptHndlr (uint32_t src_id)
-{
-   switch (src_id) 
-   {
-      /*
-       * OS_CPU_ARM_EXCEPT_IRQ / OS_CPU_ARM_EXCEPT_FIQ
-       */
-      case OS_CPU_ARM_EXCEPT_IRQ:
-      case OS_CPU_ARM_EXCEPT_FIQ:
-      {
-         CPU_IRQHandler();
-         break;
-      }         
-      
-      /*
-       * OS_CPU_ARM_EXCEPT_RESET
-       */
-      case OS_CPU_ARM_EXCEPT_RESET:
-      {
-#if defined(__DEBUG__)
-         DEBUG_WAIT();
-#endif   
-         tal_BoardReset();
-         break;
-      }
-
-      /*
-       * OS_CPU_ARM_EXCEPT_UNDEF_INSTR
-       */
-      case OS_CPU_ARM_EXCEPT_UNDEF_INSTR:
-      {
-#if defined(__DEBUG__)
-         DEBUG_WAIT();
-#endif   
-         tal_BoardReset();
-         break;
-      }
-
-      /*
-       * OS_CPU_ARM_EXCEPT_SWI
-       */
-      case OS_CPU_ARM_EXCEPT_SWI:
-      {
-#if defined(__DEBUG__)
-         DEBUG_WAIT();
-#endif   
-         tal_BoardReset();
-         break;
-      }
-      
-      /*
-       * OS_CPU_ARM_EXCEPT_DATA_ABORT
-       */
-      case OS_CPU_ARM_EXCEPT_DATA_ABORT:
-      {
-#if defined(__DEBUG__)
-         DEBUG_WAIT();
-#endif   
-         tal_BoardReset();
-         break;
-      }
-      
-      /*
-       * OS_CPU_ARM_EXCEPT_PREFETCH_ABORT
-       */
-      case OS_CPU_ARM_EXCEPT_PREFETCH_ABORT:
-      {
-#if defined(__DEBUG__)
-         DEBUG_WAIT();
-#endif   
-         tal_BoardReset();
-         break;
-      }
-
-      /*
-       * OS_CPU_ARM_EXCEPT_ADDR_ABORT
-       */
-      case OS_CPU_ARM_EXCEPT_ADDR_ABORT:
-      {
-#if defined(__DEBUG__)
-         DEBUG_WAIT();
-#endif   
-         tal_BoardReset();
-         break;
-      }
-
-      /*
-       * default
-       */
-      default:
-      {
-#if defined(__DEBUG__)
-         DEBUG_WAIT();
-#endif   
-         tal_BoardReset();
-         break;
-      }
-      
-    } /* end switch (src_id) */
-    
-} /* OS_CPU_ExceptHndlr */
-
-#endif /* defined(RTOS_UCOS3) */
 
 /*** EOF ***/

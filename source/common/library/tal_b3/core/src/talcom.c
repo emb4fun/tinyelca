@@ -1,7 +1,7 @@
 /**************************************************************************
 *  This file is part of the TAL project (Tiny Abstraction Layer)
 *
-*  Copyright (c) 2013-2023 by Michael Fischer (www.emb4fun.de).
+*  Copyright (c) 2013-2026 by Michael Fischer (www.emb4fun.de).
 *  All rights reserved.
 *
 *  Redistribution and use in source and binary forms, with or without
@@ -401,15 +401,27 @@ TAL_RESULT tal_COMSetRingBuffer (TAL_COM_DCB   *pDCB,
 
       if (TAL_COM_BUFFER_RX == eBuffer)
       {
+         pDCB->eBufferRx = TAL_COM_BUFFER_RX;
          tal_MISCRingSetup(&pDCB->RxRing, pBuffer, sizeof(uint8_t), wBufferSize);
-
+         
          Error = TAL_OK;
       }
 
       if (TAL_COM_BUFFER_TX == eBuffer)
       {
          tal_MISCRingSetup(&pDCB->TxRing, pBuffer, sizeof(uint8_t), wBufferSize);
-
+         
+         Error = TAL_OK;
+      }
+      
+      if (TAL_COM_BUFFER_RX_TIME == eBuffer)
+      {
+         pDCB->eBufferRx = TAL_COM_BUFFER_RX_TIME;
+         tal_MISCRingSetup(&pDCB->RxRing, 
+                           (uint8_t*)pBuffer, 
+                           sizeof(TAL_COM_OBJECT_TIME), 
+                           wBufferSize / sizeof(TAL_COM_OBJECT_TIME));  
+         
          Error = TAL_OK;
       }
 
@@ -418,6 +430,33 @@ TAL_RESULT tal_COMSetRingBuffer (TAL_COM_DCB   *pDCB,
 
    return(Error);
 } /* tal_COMSetRingBuffer */
+
+/*************************************************************************/
+/*  tal_COMSetRxTimestampFunc                                            */
+/*                                                                       */
+/*  Set the GetTimestamp function.                                       */
+/*                                                                       */
+/*  In    : pDCB, GetRxTimestamp                                         */
+/*  Out   : none                                                         */
+/*  Return: TAL_OK / error cause                                         */
+/*************************************************************************/
+TAL_RESULT tal_COMSetRxTimestampFunc (TAL_COM_DCB *pDCB, GET_COM_TIMESTAMP GetRxTimestamp)
+{
+   TAL_RESULT Error = TAL_ERR_PARAMETER;
+   
+   /* Check for valid parameters */
+   if ( (pDCB           != NULL)               &&
+        (GetRxTimestamp != NULL)               &&
+        (TAL_TRUE       == pDCB->bDCBInitDone) &&
+        (TAL_MAGIC_COM  == pDCB->eMagic)       )
+   {
+      pDCB->GetRxTimestamp = GetRxTimestamp;
+      
+      Error = TAL_OK;   
+   } /* end if "test parameters" */        
+   
+   return(Error);
+} /* tal_COMSetRxTimestampFunc */
 
 /*************************************************************************/
 /*  tal_COMClearOverflow                                                 */
@@ -446,6 +485,8 @@ TAL_RESULT tal_COMClearOverflow (TAL_COM_DCB *pDCB)
          /* Clear counting semaphore */
          OS_SemaDelete(&pDCB->RxRdySema);
          OS_SemaCreate(&pDCB->RxRdySema, 0, OS_SEMA_COUNTER_MAX);
+         
+         pDCB->bRxOverflow = TAL_FALSE;
 
          OS_RES_FREE(&pDCB->Sema);
 

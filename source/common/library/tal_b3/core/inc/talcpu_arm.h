@@ -1,7 +1,7 @@
 /**************************************************************************
 *  This file is part of the TAL project (Tiny Abstraction Layer)
 *
-*  Copyright (c) 2013-2023 by Michael Fischer (www.emb4fun.de).
+*  Copyright (c) 2013-2026 by Michael Fischer (www.emb4fun.de).
 *  All rights reserved.
 *
 *  Redistribution and use in source and binary forms, with or without 
@@ -57,16 +57,6 @@
 #if defined(RTOS_TCTS)
 #define TAL_CPU_IRQ_ENTER()   /* Do nothing here */   
 #define TAL_CPU_IRQ_EXIT()    /* Do not enable the INT here */
-#endif
-
-#if defined(RTOS_UCOS3)
-#define TAL_CPU_IRQ_ENTER()   {                                                           \
-                                 CPU_SR_ALLOC();                                          \
-                                 CPU_CRITICAL_ENTER();                                    \
-                                 OSIntEnter(); /* Tell OS that we are starting an ISR */  \
-                                 CPU_CRITICAL_EXIT();
-
-#define TAL_CPU_IRQ_EXIT()    OSIntExit(); /* Tell OS that we are leaving the ISR */ }
 #endif
 
 #endif /* defined(_lint) */

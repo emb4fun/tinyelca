@@ -16,7 +16,7 @@
  * Asan or Valgrind to detect memory leaks. This is reflected by the
  * "platform" associated with each meta-test.
  *
- * Use the companion script `tests/scripts/run-metatests.sh` to run all
+ * Use the companion script `framework/scripts/run-metatests.sh` to run all
  * the meta-tests for a given platform and validate that they trigger a
  * detected failure as expected.
  */
@@ -26,6 +26,14 @@
  *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
  */
 
+/* On Mingw-w64, force the use of a C99-compliant printf() and friends.
+ * This is necessary on older versions of Mingw and/or Windows runtimes
+ * where snprintf does not always zero-terminate the buffer, and does
+ * not support formats such as "%zu" for size_t and "%lld" for long long.
+ */
+#if !defined(__USE_MINGW_ANSI_STDIO)
+#define __USE_MINGW_ANSI_STDIO 1
+#endif
 
 #include <mbedtls/debug.h>
 #include <mbedtls/platform.h>
@@ -34,13 +42,12 @@
 #include "test/threading_helpers.h"
 #include "test/macros.h"
 #include "test/memory.h"
-#include "common.h"
 
 #include <stdio.h>
 #include <string.h>
 
 #if defined(MBEDTLS_THREADING_C)
-#include <mbedtls/threading.h>
+#include "threading_internal.h"
 #endif
 
 
@@ -201,10 +208,7 @@ static void test_memory_poison(const char *name)
     size_t start = 0, offset = 0, count = 0;
     char direction = 'r';
     if (sscanf(name,
-               "%*[^0-9]%" MBEDTLS_PRINTF_SIZET
-               "%*[^0-9]%" MBEDTLS_PRINTF_SIZET
-               "%*[^0-9]%" MBEDTLS_PRINTF_SIZET
-               "_%c",
+               "%*[^0-9]%zu%*[^0-9]%zu%*[^0-9]%zu_%c",
                &start, &offset, &count, &direction) != 4) {
         mbedtls_fprintf(stderr, "%s: Bad name format: %s\n", __func__, name);
         return;
@@ -218,22 +222,19 @@ static void test_memory_poison(const char *name)
 
     if (start > sizeof(aligned.buf)) {
         mbedtls_fprintf(stderr,
-                        "%s: start=%" MBEDTLS_PRINTF_SIZET
-                        " > size=%" MBEDTLS_PRINTF_SIZET,
+                        "%s: start=%zu > size=%zu",
                         __func__, start, sizeof(aligned.buf));
         return;
     }
     if (start + count > sizeof(aligned.buf)) {
         mbedtls_fprintf(stderr,
-                        "%s: start+count=%" MBEDTLS_PRINTF_SIZET
-                        " > size=%" MBEDTLS_PRINTF_SIZET,
+                        "%s: start+count=%zu > size=%zu",
                         __func__, start + count, sizeof(aligned.buf));
         return;
     }
     if (offset >= count) {
         mbedtls_fprintf(stderr,
-                        "%s: offset=%" MBEDTLS_PRINTF_SIZET
-                        " >= count=%" MBEDTLS_PRINTF_SIZET,
+                        "%s: offset=%zu >= count=%zu",
                         __func__, offset, count);
         return;
     }
@@ -286,6 +287,10 @@ exit:
 #endif
 }
 
+/* Since TF-PSA-Crypto 1.0, mbedtls_mutex_free() on an all-bits-zero
+ * mutex is defined to be a no-op. In earlier library versions,
+ * it had undefined behavior. */
+#if MBEDTLS_THREADING_INTERNAL_VERSION <= 0x04000000
 static void mutex_free_not_initialized(const char *name)
 {
     (void) name;
@@ -299,6 +304,7 @@ static void mutex_free_not_initialized(const char *name)
     mbedtls_mutex_free(&mutex);
 #endif
 }
+#endif
 
 static void mutex_double_init(const char *name)
 {
@@ -315,6 +321,10 @@ static void mutex_double_init(const char *name)
 #endif
 }
 
+/* Since TF-PSA-Crypto 1.0, mbedtls_mutex_free() on an all-bits-zero
+ * mutex is defined to be a no-op. In earlier library versions,
+ * it had undefined behavior. */
+#if MBEDTLS_THREADING_INTERNAL_VERSION <= 0x04000000
 static void mutex_double_free(const char *name)
 {
     (void) name;
@@ -329,6 +339,7 @@ static void mutex_double_free(const char *name)
     mbedtls_mutex_free(&mutex);
 #endif
 }
+#endif
 
 static void mutex_leak(const char *name)
 {
@@ -418,9 +429,13 @@ metatest_t metatests[] = {
     { "test_memory_poison_7_1_2_w", "poison", test_memory_poison },
     { "mutex_lock_not_initialized", "pthread", mutex_lock_not_initialized },
     { "mutex_unlock_not_initialized", "pthread", mutex_unlock_not_initialized },
+#if MBEDTLS_THREADING_INTERNAL_VERSION <= 0x04000000
     { "mutex_free_not_initialized", "pthread", mutex_free_not_initialized },
+#endif
     { "mutex_double_init", "pthread", mutex_double_init },
+#if MBEDTLS_THREADING_INTERNAL_VERSION <= 0x04000000
     { "mutex_double_free", "pthread", mutex_double_free },
+#endif
     { "mutex_leak", "pthread", mutex_leak },
     { NULL, NULL, NULL }
 };

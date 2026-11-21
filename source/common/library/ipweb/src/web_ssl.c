@@ -52,14 +52,13 @@
 #include "lwip/api.h"
 #include "lwip/priv/sockets_priv.h"
 
-#include "mbedtls/mbedtls_config.h"
-#include "mbedtls/entropy.h"
-#include "mbedtls/ctr_drbg.h"
 #include "mbedtls/x509.h"
 #include "mbedtls/ssl.h"
 #include "mbedtls/net_sockets.h"
 #include "mbedtls/debug.h"
 #include "mbedtls/ssl_cache.h"
+
+#include "mbedtls/psa_util.h"
 
 #if !defined(IP_WEB_TLS_MAX_HTTP_TASKS) 
 #define _MAX_WEB_TLS_CLIENT_TASKS   4
@@ -67,15 +66,18 @@
 #define _MAX_WEB_TLS_CLIENT_TASKS   IP_WEB_TLS_MAX_HTTP_TASKS
 #endif
 
+#if !defined(IP_WEB_TLS_ONLY)
+#define _IP_WEB_TLS_ONLY         0
+#else
+#define _IP_WEB_TLS_ONLY         IP_WEB_TLS_ONLY
+#endif
+
 /*=======================================================================*/
 /*  All Structures and Common Constants                                  */
 /*=======================================================================*/
 
-static const char               *pers = "ssl_server";
 static mbedtls_x509_crt          srvcert;
 static mbedtls_pk_context        pkey;
-static mbedtls_ctr_drbg_context  ctr_drbg;
-static mbedtls_entropy_context   entropy;
 static mbedtls_ssl_config        conf;
 static mbedtls_ssl_cache_context cache;
 
@@ -196,24 +198,22 @@ int mbedtls_net_send (void *ctx, const unsigned char *buf, size_t len)
 /*************************************************************************/
 static int InitTls (void)
 {
-   int    rc;
-   char  *buf;
-   size_t buflen;
+   int          rc;
+   char        *buf;
+   size_t       buflen;
+   psa_status_t status;
 
-   mbedtls_x509_crt_init(&srvcert);
-   mbedtls_pk_init(&pkey);
-   mbedtls_ctr_drbg_init(&ctr_drbg);
-   mbedtls_entropy_init(&entropy);
-   mbedtls_ssl_config_init(&conf);
-   mbedtls_ssl_cache_init(&cache);
-   
-   psa_status_t status = psa_crypto_init();
+   status = psa_crypto_init();
    if (status != PSA_SUCCESS) 
    {
       return(-1);
    }
-   
-   
+
+   mbedtls_x509_crt_init(&srvcert);
+   mbedtls_pk_init(&pkey);
+   mbedtls_ssl_config_init(&conf);
+   mbedtls_ssl_cache_init(&cache);
+
    /*
     * 1. Load the certificates and private key
     */
@@ -225,20 +225,12 @@ static int InitTls (void)
 
    /* Device private key */
    cert_Get_DeviceKey(&buf, &buflen);
-   rc = mbedtls_pk_parse_key(&pkey, (const unsigned char *) buf, buflen, NULL, 0,
-                             mbedtls_ctr_drbg_random, &ctr_drbg);
+   rc = mbedtls_pk_parse_key(&pkey, (const unsigned char *) buf, buflen, NULL, 0);
    if(rc != 0) goto exit; /*lint !e801*/
 
 
    /*
-    * 2. Seed the RNG
-    */
-   rc = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *)pers, strlen(pers));
-   if(rc != 0) goto exit; /*lint !e801*/
-
-
-   /*
-    * 3. Setup stuff
+    * 2. Setup stuff
     */
    rc = mbedtls_ssl_config_defaults(&conf, MBEDTLS_SSL_IS_SERVER, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
    if(rc != 0) goto exit; /*lint !e801*/
@@ -246,13 +238,17 @@ static int InitTls (void)
 //   rc = mbedtls_ssl_conf_max_frag_len(&conf, MBEDTLS_SSL_MAX_FRAG_LEN_4096);
 //   if(rc != 0) goto exit; /*lint !e801*/
 
-   mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
+   /*
+    * Note: mbedTLS 4.x always uses the PSA random generator for the
+    * TLS handshake, mbedtls_ssl_conf_rng() does no longer exist.
+    */
    
    //mbedtls_ssl_conf_dbg(&conf, my_debug, 0);
    //mbedtls_debug_set_threshold( 2 );
    
    mbedtls_ssl_conf_session_cache(&conf, &cache, mbedtls_ssl_cache_get, mbedtls_ssl_cache_set);
 
+   mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_NONE);
    mbedtls_ssl_conf_ca_chain(&conf, srvcert.next, NULL);
 
    rc = mbedtls_ssl_conf_own_cert(&conf, &srvcert, &pkey);
@@ -344,7 +340,7 @@ exit:
 #endif
 
    nNumThreads--;
-   
+
    OS_TaskExit();
 } /* WebClientTls */
 
@@ -497,6 +493,12 @@ int IP_WEBS_SSLStart (uint16_t wPort)
    {
       nWebsTlsRunning = 1;
       wServerPort     = wPort;
+
+#if (_IP_WEB_TLS_ONLY >= 1)
+      IP_WEBS_APIStart();
+      IP_WEBS_CGIStart();
+      IP_WEBS_SSIStart();
+#endif
 
       /*
        * Initialize the stream interface. 

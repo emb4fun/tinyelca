@@ -1,5 +1,5 @@
 /**************************************************************************
-*  Copyright (c) 2019-2024 by Michael Fischer (www.emb4fun.de).
+*  Copyright (c) 2019-2026 by Michael Fischer (www.emb4fun.de).
 *  All rights reserved.
 *
 *  Redistribution and use in source and binary forms, with or without 
@@ -45,10 +45,13 @@
 #include "ipweb.h"
 #include "cert.h"
 #include "xmempool.h"
-#include "mbedtls/version.h"
-#include "iperf.h"
+#include "mbedtls_psa_support.h"
 
+#include "mbedtls/version.h"
+#include "psa/crypto.h"
 #include "elca.h"
+
+#include "iperf.h"
 
 /*=======================================================================*/
 /*  All Structures and Common Constants                                  */
@@ -168,7 +171,7 @@ static void SecFunction (void)
       IP_TNP_DHCPCallbackBound(0);
       IP_SNTP_TimeSync();
       
-      nLedMode = LED_MODE_READY;;
+      nLedMode = LED_MODE_READY;
    }
    
    /********************************************/   
@@ -240,11 +243,15 @@ static void EthernetInit (void)
    /* Start the IP stack */
    IP_IF_Start(0);
 
+   /* Set the hostname */
+   IP_IF_HostnameSet(0, MDNSName2);
+
    /* Start the DHCP service */   
    if (etc_IPDhcpIsUsed() != 0)
    {
       /* mDNS will be started later, if DHCP is bound */
       IP_DHCP_CallbackSet(0, DHCPCallbackBound);   
+      //IP_DHCP_TimeoutSet(0, 3000);
       IP_DHCP_Start(0);
    }
    else
@@ -401,11 +408,13 @@ static void OutputUsageInfo (void)
    term_printf("t: output task info\r\n");
    term_printf("m: output memory info\r\n");
    term_printf("v: output version info\r\n");
+   term_printf("x: reboot\r\n");
+   term_printf("1: output network configuration info\r\n");
 
-   term_printf("n: output network configuration info\r\n");
 #if defined(LWIP_DEBUG)
    term_printf("l: output lwIP statistics\r\n");
 #endif 
+
    term_printf("\r\n");
    
 } /* OutputUsageInfo */
@@ -496,6 +505,8 @@ static void LEDTask (void *p)
 /*************************************************************************/
 static void StartTask (void *p)
 {
+   psa_status_t status;
+
    (void)p;
    
    /*
@@ -505,6 +516,14 @@ static void StartTask (void *p)
     
    OS_SysTickStart();   /* Start the System ticker */
    OS_StatEnable();     /* Enable the statistic function */
+
+   /*
+    * Initialize the mbedTLS/PSA crypto support (threading), this must
+    * be done before any other mbedTLS or PSA crypto function is used.
+    */
+   mbedtls_psa_support_init();
+
+   /*******************************************************************/
 
    term_Start();        /* Start the Terminal functionality */
    
@@ -525,6 +544,18 @@ static void StartTask (void *p)
 
    TimeInit();          /* Initialize the system time */
    EntropyInit();       /* Initialize the entropy source */
+
+   /*
+    * Initialize the PSA crypto library, this must be done before any
+    * other TLS or PSA crypto function is used. Additional calls, as
+    * done in web_ssl.c, are allowed and return PSA_SUCCESS again.
+    */
+   status = psa_crypto_init();
+   if (status != PSA_SUCCESS)
+   {
+      term_printf("psa_crypto_init() error: %d\r\n", (int)status);
+   }
+
    EthernetInit();      /* Configure and start the IP interface */
 
    /*
@@ -538,7 +569,7 @@ static void StartTask (void *p)
    elca_Init();               /* Initialize the ELCA system */
 
    IP_WEBS_Start(80);         /* Start the web server */
-   IP_WEBS_SSLStart(443);
+   IP_WEBS_SSLStart(443); /* Start the SSL web server */
 
    /*******************************************************************/
 
@@ -586,7 +617,7 @@ static void StartTask (void *p)
 int main (void)
 {
    /* 
-    * Init the Tiny Abstraction Layer 
+    * Init the "Tiny Abstraction Layer"
     */
    tal_Init();
    
@@ -676,6 +707,18 @@ void term_RxCallback (uint8_t bData)
          break;
       }
 
+      case 'x':
+      {
+         tal_CPUReboot();
+         break;
+      }
+
+      case '1':
+      {
+         IP_IF_OutputConfig(0);
+         break;
+      }
+
 #if defined(LWIP_DEBUG)
       case 'l':
          {
@@ -686,12 +729,6 @@ void term_RxCallback (uint8_t bData)
       
       /**************************************************/
       
-      case 'n':
-      {
-         IP_IF_OutputConfig(0);
-         break;
-      }
-      
       default:
       {
          /* Do nothing */
@@ -700,24 +737,5 @@ void term_RxCallback (uint8_t bData)
    } /* end switch (bData) */
 
 } /* term_RxCallback */
-
-/*************************************************************************/
-/*  mbedtls_hardware_poll                                                */
-/*                                                                       */
-/*  mbedTLS support function to retrieve RNG data.                       */
-/*                                                                       */
-/*  In    : data, output, olen                                           */
-/*  Out   : output, olen                                                 */
-/*  Return: 0 = OK                                                       */
-/*************************************************************************/
-int mbedtls_hardware_poll (void *data, unsigned char *output, size_t len, size_t *olen)
-{
-   (void)data;
-
-   tal_CPURngHardwarePoll(output, len);
-   *olen = len;
-   
-   return(0);
-} /* mbedtls_hardware_poll */
 
 /*** EOF ***/

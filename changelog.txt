@@ -2,12 +2,19 @@
 * Project: tinyelca
 * Name   : "An Embedded Local Certificate Authority."
 * Target : BeagleBone Black
-* Version: 20250628
+* Version: 20261119
 ***************************************************************************
-* Tools  : SEGGER Embedded Studio for ARM v8.22a
+* Tools  : SEGGER Embedded Studio for ARM v8.30a
 ***************************************************************************
 * URL    : https://www.emb4fun.de/projects/telca/index.html
 ***************************************************************************
+
+= Version 1.20 / 1.04, 19.11.2026
+   * Updated MbedTLS to v4.1.2.
+   * Updated lwIP to version from 2026-11-19.
+     (777e6d4, https://github.com/lwip-tcpip/lwip)
+   * Updated FatFS to R0.16 with patch 2
+   * Used SEGGER Embedded Studio for ARM v8.30c.
 
 = Version 1.14 / 1.03, 28.06.2025
    * Updated lwIP to "lwip-56b29f8bcfaefe2974dca67bde16cc7c391feaeb".

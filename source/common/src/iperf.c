@@ -1,5 +1,5 @@
 /**************************************************************************
-*  Copyright (c) 2013-2024 by Michael Fischer (www.emb4fun.de).
+*  Copyright (c) 2013-2026 by Michael Fischer (www.emb4fun.de).
 *  All rights reserved.
 *
 *  Redistribution and use in source and binary forms, with or without 
@@ -58,7 +58,7 @@
 
 #define IPERF_TCP_PORT     5001
 
-#define MAX_IPERF_CLIENT   8
+#define MAX_IPERF_CLIENT   4
 
 typedef struct _client_info_
 {

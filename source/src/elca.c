@@ -1,5 +1,5 @@
 /**************************************************************************
-*  Copyright (c) 2021-2024 by Michael Fischer (www.emb4fun.de).
+*  Copyright (c) 2021-2026 by Michael Fischer (www.emb4fun.de).
 *  All rights reserved.
 *
 *  Redistribution and use in source and binary forms, with or without 
@@ -61,10 +61,8 @@
 
 #include "mbedtls/platform.h"
 #include "mbedtls/base64.h"
-#include "mbedtls/pkcs5.h"
 #include "mbedtls/pk.h"
-#include "mbedtls/entropy.h"
-#include "mbedtls/ctr_drbg.h"
+#include "mbedtls/psa_util.h"
 #include "mbedtls/oid.h"
 #include "mbedtls/asn1write.h"
 #include "mbedtls/x509.h"
@@ -236,8 +234,6 @@ static int    nPSKNotFound   = 1;
 
 static mbedtls_x509_csr         csr; 
 static mbedtls_x509_crt         crt;
-static mbedtls_ctr_drbg_context ctr_drbg;
-static mbedtls_entropy_context  entropy;
 
 static char Month[12][4] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
@@ -346,6 +342,153 @@ static void CreateValidity (char not_before[MBEDTLS_X509_RFC5280_UTC_TIME_LEN],
 } /* CreateValidity */
 
 /*************************************************************************/
+/*  AesCbcCrypt                                                          */
+/*                                                                       */
+/*  AES-256-CBC encrypt or decrypt without padding, by the PSA crypto   */
+/*  API. The IV is explicit, therefore the multipart operation must be  */
+/*  used, a one shot operation would generate the IV by itself.         */
+/*                                                                       */
+/*  In    : pKey, Encrypt, pIV, pIn, Size                               */
+/*  Out   : pOut                                                        */
+/*  Return: 0 = OK / -1 = ERROR                                          */
+/*************************************************************************/
+static int AesCbcCrypt (const uint8_t *pKey, int Encrypt, const uint8_t *pIV,
+                        const uint8_t *pIn, uint8_t *pOut, size_t Size)
+{
+   int                    rc = -1;
+   psa_status_t           status;
+   psa_key_attributes_t   attributes = PSA_KEY_ATTRIBUTES_INIT;
+   psa_cipher_operation_t operation  = PSA_CIPHER_OPERATION_INIT;
+   psa_key_id_t           key_id     = 0;
+   size_t                 OutLen     = 0;
+   size_t                 FinalLen   = 0;
+
+   /* Import the AES key for the PSA cipher operation */
+   psa_set_key_type(&attributes, PSA_KEY_TYPE_AES);
+   psa_set_key_bits(&attributes, (ELCA_KEY_LEN * 8));
+   psa_set_key_usage_flags(&attributes, (Encrypt != 0) ? PSA_KEY_USAGE_ENCRYPT
+                                                       : PSA_KEY_USAGE_DECRYPT);
+   psa_set_key_algorithm(&attributes, PSA_ALG_CBC_NO_PADDING);
+
+   status = psa_import_key(&attributes, pKey, ELCA_KEY_LEN, &key_id);
+
+   if (status == PSA_SUCCESS)
+   {
+      if (Encrypt != 0)
+      {
+         status = psa_cipher_encrypt_setup(&operation, key_id,
+                                          PSA_ALG_CBC_NO_PADDING);
+      }
+      else
+      {
+         status = psa_cipher_decrypt_setup(&operation, key_id,
+                                          PSA_ALG_CBC_NO_PADDING);
+      }
+   }
+
+   if (status == PSA_SUCCESS)
+   {
+      status = psa_cipher_set_iv(&operation, pIV, AES_IV_BYTES_CNT);
+   }
+
+   if (status == PSA_SUCCESS)
+   {
+      status = psa_cipher_update(&operation, pIn, Size, pOut,
+                                 PSA_CIPHER_UPDATE_OUTPUT_SIZE(PSA_KEY_TYPE_AES,
+                                                               PSA_ALG_CBC_NO_PADDING,
+                                                               Size),
+                                 &OutLen);
+   }
+
+   if (status == PSA_SUCCESS)
+   {
+      status = psa_cipher_finish(&operation, &pOut[OutLen],
+                                (Size - OutLen), &FinalLen);
+   }
+
+   /* The operation will be finished or in error state, abort is always safe */
+   psa_cipher_abort(&operation);
+   psa_destroy_key(key_id);
+
+   if ((status == PSA_SUCCESS) && ((OutLen + FinalLen) == Size))
+   {
+      rc = 0;
+   }
+
+   return(rc);
+} /* AesCbcCrypt */
+
+/*************************************************************************/
+/*  AesEcbCrypt                                                          */
+/*                                                                       */
+/*  AES-256-ECB encrypt or decrypt of one block without padding, by the */
+/*  PSA crypto API.                                                      */
+/*                                                                       */
+/*  In    : pKey, Encrypt, pIn                                           */
+/*  Out   : pOut                                                        */
+/*  Return: 0 = OK / -1 = ERROR                                          */
+/*************************************************************************/
+static int AesEcbCrypt (const uint8_t *pKey, int Encrypt, const uint8_t *pIn, uint8_t *pOut)
+{
+   int                    rc = -1;
+   psa_status_t           status;
+   psa_key_attributes_t   attributes = PSA_KEY_ATTRIBUTES_INIT;
+   psa_cipher_operation_t operation  = PSA_CIPHER_OPERATION_INIT;
+   psa_key_id_t           key_id     = 0;
+   size_t                 OutLen     = 0;
+   size_t                 FinalLen   = 0;
+
+   /* Import the AES key for the PSA cipher operation */
+   psa_set_key_type(&attributes, PSA_KEY_TYPE_AES);
+   psa_set_key_bits(&attributes, (ELCA_KEY_LEN * 8));
+   psa_set_key_usage_flags(&attributes, (Encrypt != 0) ? PSA_KEY_USAGE_ENCRYPT
+                                                       : PSA_KEY_USAGE_DECRYPT);
+   psa_set_key_algorithm(&attributes, PSA_ALG_ECB_NO_PADDING);
+
+   status = psa_import_key(&attributes, pKey, ELCA_KEY_LEN, &key_id);
+
+   if (status == PSA_SUCCESS)
+   {
+      if (Encrypt != 0)
+      {
+         status = psa_cipher_encrypt_setup(&operation, key_id,
+                                          PSA_ALG_ECB_NO_PADDING);
+      }
+      else
+      {
+         status = psa_cipher_decrypt_setup(&operation, key_id,
+                                          PSA_ALG_ECB_NO_PADDING);
+      }
+   }
+
+   if (status == PSA_SUCCESS)
+   {
+      status = psa_cipher_update(&operation, pIn, AES_DATA_BYTES_CNT, pOut,
+                                 PSA_CIPHER_UPDATE_OUTPUT_SIZE(PSA_KEY_TYPE_AES,
+                                                               PSA_ALG_ECB_NO_PADDING,
+                                                               AES_DATA_BYTES_CNT),
+                                 &OutLen);
+   }
+
+   if (status == PSA_SUCCESS)
+   {
+      status = psa_cipher_finish(&operation, &pOut[OutLen],
+                                (AES_DATA_BYTES_CNT - OutLen), &FinalLen);
+   }
+
+   /* The operation will be finished or in error state, abort is always safe */
+   psa_cipher_abort(&operation);
+   psa_destroy_key(key_id);
+
+   if ((status == PSA_SUCCESS) && ((OutLen + FinalLen) == AES_DATA_BYTES_CNT))
+   {
+      rc = 0;
+   }
+
+   return(rc);
+} /* AesEcbCrypt */
+
+/*************************************************************************/
 /*  LoadPSK                                                              */
 /*                                                                       */
 /*  In    : none                                                         */
@@ -358,9 +501,8 @@ static int LoadPSK (void)
    int                        fd;
    int                        size;
    char                      *chr;
-   static mbedtls_aes_context ctx;
    static uint8_t             data[1024];
-   static uint8_t             iv[AES_IV_BYTES_CNT];
+   static uint8_t             out[1024];
    static uint8_t             tmp[AES_IV_BYTES_CNT];
    FRESULT                    res;
    FIL                        fil;
@@ -411,15 +553,7 @@ static int LoadPSK (void)
       tal_CPURngHardwarePoll(tmp, AES_IV_BYTES_CNT);
       
       /* Encrypt data */
-      memcpy(iv, tmp, AES_IV_BYTES_CNT);
-      mbedtls_aes_init(&ctx);
-      mbedtls_aes_setkey_enc(&ctx, ELCAKey, (ELCA_KEY_LEN*8));
-      rc = mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_ENCRYPT, 
-                                 (size_t)size,
-                                 iv,
-                                 (uint8_t*)data,
-                                 (uint8_t*)data);
-      mbedtls_aes_free(&ctx);
+      rc = AesCbcCrypt(ELCAKey, 1, tmp, data, out, (size_t)size);
       
       /* Check for AES error */
       if (rc != 0) GOTO_END(ELCA_ERROR);
@@ -429,7 +563,7 @@ static int LoadPSK (void)
       if (fd != -1)
       {
          rc  = _write(fd, tmp, AES_IV_BYTES_CNT);
-         rc += _write(fd, data, (size_t)size);
+         rc += _write(fd, out, (size_t)size);
          _close(fd);
          if (rc != (int)(AES_IV_BYTES_CNT + size))  GOTO_END(ELCA_ERROR);
       } 
@@ -473,23 +607,18 @@ static int LoadPSK (void)
       if (size < 0) GOTO_END(ELCA_ERROR);
 
       /* Decrypt data */
-      mbedtls_aes_init(&ctx);
-      mbedtls_aes_setkey_dec(&ctx, ELCAKey, (ELCA_KEY_LEN*8));
-      rc = mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_DECRYPT, 
-                                 (size_t)size,
-                                 data,
-                                 (uint8_t*)&data[AES_IV_BYTES_CNT],
-                                 (uint8_t*)&data[AES_IV_BYTES_CNT]);
-      mbedtls_aes_free(&ctx);
+      memset(out, 0x00, sizeof(out));
+      rc = AesCbcCrypt(ELCAKey, 0, data, (uint8_t*)&data[AES_IV_BYTES_CNT],
+                       out, (size_t)size);
       
       /* Check for AES error */
       if (rc != 0) GOTO_END(ELCA_ERROR);
       
       /* Get KEY size */
-      size = (int)strlen((char*)&data[AES_IV_BYTES_CNT]);
+      size = (int)strlen((char*)out);
       if (size > PSK_LEN) GOTO_END(ELCA_ERROR);
       memset(PSK, 0x00, sizeof(PSK));
-      memcpy(PSK, (char*)&data[AES_IV_BYTES_CNT], (size_t)size);
+      memcpy(PSK, out, (size_t)size);
       
       /* No error */   
       nPSKNotFound = 0;
@@ -512,18 +641,19 @@ static int LoadCAKey (void)
    int                        rc = -1;
    int                        fd;
    int                        size;
-   static mbedtls_aes_context ctx;
    static uint8_t             data[1024];
-   static uint8_t             iv[AES_IV_BYTES_CNT];
+   static uint8_t             out[1024];
    static uint8_t             tmp[AES_IV_BYTES_CNT];
    FRESULT                    res;
    FIL                        fil;
    uint32_t                   bw;
    
    
+   /* Free a previously loaded CA key, safe to call on a zeroed context */
+   mbedtls_pk_free(&InterKey);
+
    mbedtls_pk_init(&InterKey);
-   mbedtls_ctr_drbg_init(&ctr_drbg);
-   
+
    nCAKeyNotFound = 1;
 
    /* 
@@ -539,8 +669,7 @@ static int LoadCAKey (void)
       size++;      
       
       /* Check if this is a valid key */
-      rc = mbedtls_pk_parse_key(&InterKey, data, (size_t)size, NULL, 0,
-                                mbedtls_ctr_drbg_random, &ctr_drbg);
+      rc = mbedtls_pk_parse_key(&InterKey, data, (size_t)size, NULL, 0);
       if (rc != 0) GOTO_END(ELCA_ERROR);
       mbedtls_pk_free(&InterKey);
       
@@ -554,15 +683,7 @@ static int LoadCAKey (void)
       tal_CPURngHardwarePoll(tmp, AES_IV_BYTES_CNT);
       
       /* Encrypt data */
-      memcpy(iv, tmp, AES_IV_BYTES_CNT);
-      mbedtls_aes_init(&ctx);
-      mbedtls_aes_setkey_enc(&ctx, ELCAKey, (ELCA_KEY_LEN*8));
-      rc = mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_ENCRYPT, 
-                                 (size_t)size,
-                                 iv,
-                                 (uint8_t*)data,
-                                 (uint8_t*)data);
-      mbedtls_aes_free(&ctx);
+      rc = AesCbcCrypt(ELCAKey, 1, tmp, data, out, (size_t)size);
       
       /* Check for AES error */
       if (rc != 0) GOTO_END(ELCA_ERROR);
@@ -572,7 +693,7 @@ static int LoadCAKey (void)
       if (fd != -1)
       {
          rc  = _write(fd, tmp, AES_IV_BYTES_CNT);
-         rc += _write(fd, data, (size_t)size);
+         rc += _write(fd, out, (size_t)size);
          _close(fd);
          if (rc != (int)(AES_IV_BYTES_CNT + size))  GOTO_END(ELCA_ERROR);
       } 
@@ -616,26 +737,20 @@ static int LoadCAKey (void)
       if (size < 0) GOTO_END(ELCA_ERROR);
 
       /* Decrypt data */
-      mbedtls_aes_init(&ctx);
-      mbedtls_aes_setkey_dec(&ctx, ELCAKey, (ELCA_KEY_LEN*8));
-      rc = mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_DECRYPT, 
-                                 (size_t)size,
-                                 data,
-                                 (uint8_t*)&data[AES_IV_BYTES_CNT],
-                                 (uint8_t*)&data[AES_IV_BYTES_CNT]);
-      mbedtls_aes_free(&ctx);
+      memset(out, 0x00, sizeof(out));
+      rc = AesCbcCrypt(ELCAKey, 0, data, (uint8_t*)&data[AES_IV_BYTES_CNT],
+                       out, (size_t)size);
       
       /* Check for AES error */
       if (rc != 0) GOTO_END(ELCA_ERROR);
       
       /* Get KEY size */
-      size = (int)strlen((char*)&data[AES_IV_BYTES_CNT]) + 1;
-      if (size > ((int)sizeof(data) - AES_IV_BYTES_CNT)) GOTO_END(ELCA_ERROR);
+      size = (int)strlen((char*)out) + 1;
+      if (size > (int)sizeof(out)) GOTO_END(ELCA_ERROR);
          
       /* Check if this is a valid key */
       mbedtls_pk_init(&InterKey);
-      rc = mbedtls_pk_parse_key(&InterKey, &data[AES_IV_BYTES_CNT], (size_t)size, NULL, 0,
-                                mbedtls_ctr_drbg_random, &ctr_drbg);
+      rc = mbedtls_pk_parse_key(&InterKey, out, (size_t)size, NULL, 0);
       if (rc != 0) GOTO_END(ELCA_ERROR);
       
       /* No error */   
@@ -646,7 +761,6 @@ end:
 
    if (rc != 0)
    {
-      mbedtls_ctr_drbg_free(&ctr_drbg);
       mbedtls_pk_free(&InterKey);
    } 
 
@@ -940,14 +1054,11 @@ static int CRTCreate (char *pCSR, char *crt_data, size_t crt_data_size, uint32_t
 {
    int                           rc;
    size_t                        size;
-   mbedtls_mpi                   serial;
    static char                   subject_name[256];
    static char                   issuer_name[256];
-   static char                   serial_name[256];
    static uint8_t                serial_raw[16];
    static char                   not_before[MBEDTLS_X509_RFC5280_UTC_TIME_LEN];
    static char                   not_after[MBEDTLS_X509_RFC5280_UTC_TIME_LEN];
-   static char                   tmp[3];
    mbedtls_pk_context           *subject_key;
    static mbedtls_x509write_cert crt;  /*lint !e578*/
    int                           san_cnt;
@@ -963,14 +1074,6 @@ static int CRTCreate (char *pCSR, char *crt_data, size_t crt_data_size, uint32_t
 
    mbedtls_x509_csr_init(&csr);
    mbedtls_x509write_crt_init(&crt);
-   mbedtls_ctr_drbg_init(&ctr_drbg);
-   mbedtls_entropy_init(&entropy);
-   mbedtls_mpi_init(&serial);
-
-   /* Create entropy */
-   rc =  mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
-                               (const unsigned char *)"TinyELCA", 7);
-   if (rc != 0) GOTO_END(rc);
 
    /* Get issuer name */   
    rc = mbedtls_x509_dn_gets(issuer_name, sizeof(issuer_name), &InterCert.crt.subject);
@@ -1014,15 +1117,7 @@ static int CRTCreate (char *pCSR, char *crt_data, size_t crt_data_size, uint32_t
    mbedtls_x509write_crt_set_md_alg(&crt, MBEDTLS_MD_SHA256);
 
    /* Serial number */
-   serial_name[0] = 0;
    tal_CPURngHardwarePoll(serial_raw, sizeof(serial_raw));
-   for (int x = 0; x < (int)sizeof(serial_raw); x++)
-   {
-      snprintf(tmp, sizeof(tmp), "%02x", serial_raw[x]);
-      strcat(serial_name, tmp);
-   }
-   rc = mbedtls_mpi_read_string(&serial, 16, serial_name);
-   if (rc != 0) GOTO_END(rc);
 
    rc = mbedtls_x509write_crt_set_serial_raw(&crt, serial_raw, sizeof(serial_raw)); 
    if (rc != 0) GOTO_END(rc);
@@ -1055,7 +1150,7 @@ static int CRTCreate (char *pCSR, char *crt_data, size_t crt_data_size, uint32_t
 
    /* Create certificate in PEM format */
    memset(crt_data, 0x00, crt_data_size );
-   rc = mbedtls_x509write_crt_pem(&crt, (uint8_t*)crt_data, crt_data_size, mbedtls_ctr_drbg_random, &ctr_drbg);
+   rc = mbedtls_x509write_crt_pem(&crt, (uint8_t*)crt_data, crt_data_size);
    if (rc < 0) return(rc);
    
    /* Store device certificate for later use */
@@ -1077,9 +1172,6 @@ end:
 
    mbedtls_x509_csr_free(&csr);
    mbedtls_x509write_crt_free(&crt);
-   mbedtls_ctr_drbg_free(&ctr_drbg);
-   mbedtls_entropy_free(&entropy);
-   mbedtls_mpi_free(&serial);
 
    return(rc);   
 } /* CRTCreate */
@@ -1367,15 +1459,47 @@ end:
 /*************************************************************************/
 static int ELCACreateKey (char *pPass, size_t PassLen)
 {
-   int rc = ELCA_ERROR;
-   int ret;
+   int                                rc = ELCA_ERROR;
+   psa_status_t                       status;
+   psa_key_derivation_operation_t Derive = PSA_KEY_DERIVATION_OPERATION_INIT;
 
-   ret = mbedtls_pkcs5_pbkdf2_hmac_ext(MBEDTLS_MD_SHA256, 
-                                       (uint8_t*)pPass, PassLen, 
-                                       ELCASalt, sizeof(ELCASalt),
-                                       4096,
-                                       sizeof(ELCAKey), ELCAKey);
-   if (0 == ret)
+   /*
+    * Create the AES key by PBKDF2-HMAC-SHA256, with 4096 iterations.
+    * Note: The salt includes the string termination, to keep the
+    * result compatible with the previous legacy implementation.
+    */
+   status = psa_key_derivation_setup(&Derive,
+                                     PSA_ALG_PBKDF2_HMAC(PSA_ALG_SHA_256));
+   if (status == PSA_SUCCESS)
+   {
+      status = psa_key_derivation_input_integer(&Derive,
+                                                PSA_KEY_DERIVATION_INPUT_COST,
+                                                4096);
+   }
+
+   if (status == PSA_SUCCESS)
+   {
+      status = psa_key_derivation_input_bytes(&Derive,
+                                               PSA_KEY_DERIVATION_INPUT_SALT,
+                                               ELCASalt, sizeof(ELCASalt));
+   }
+
+   if (status == PSA_SUCCESS)
+   {
+      status = psa_key_derivation_input_bytes(&Derive,
+                                              PSA_KEY_DERIVATION_INPUT_PASSWORD,
+                                              (const uint8_t *)pPass, PassLen);
+   }
+
+   if (status == PSA_SUCCESS)
+   {
+      status = psa_key_derivation_output_bytes(&Derive, ELCAKey, sizeof(ELCAKey));
+   }
+
+   /* In the finished or error state, abort is always safe */
+   psa_key_derivation_abort(&Derive);
+
+   if (status == PSA_SUCCESS)
    {
       rc = ELCA_OK;
    }                                    
@@ -1450,7 +1574,7 @@ static int ELCAFirstInit (char *pPass, size_t PassLen)
    int                        rc = ELCA_ERR_ELCA_PATH;
    FRESULT                    res;
    int                        fd;
-   static mbedtls_aes_context ctx;
+   uint8_t                    out[AES_DATA_BYTES_CNT];
    static uint8_t             data[AES_DATA_BYTES_CNT];
    
 
@@ -1468,12 +1592,7 @@ static int ELCAFirstInit (char *pPass, size_t PassLen)
          tal_CPURngHardwarePoll(data, sizeof(data));
          snprintf((char*)data, sizeof(data), "%s", ELCATest);
          
-         mbedtls_aes_init(&ctx);
-         mbedtls_aes_setkey_enc(&ctx, ELCAKey, (ELCA_KEY_LEN*8));
-         rc = mbedtls_aes_crypt_ecb(&ctx, MBEDTLS_AES_ENCRYPT, 
-                                    (uint8_t*)data,
-                                    (uint8_t*)data);
-         mbedtls_aes_free(&ctx);
+         rc = AesEcbCrypt(ELCAKey, 1, data, out);
       
          /* Check for AES error */
          if (rc != 0)
@@ -1487,11 +1606,11 @@ static int ELCAFirstInit (char *pPass, size_t PassLen)
             fd = _open("SD0:/elca/elca.key", _O_BINARY | _O_WRONLY | _O_CREATE_ALWAYS);
             if (fd != -1)
             {
-               rc = _write(fd, data, sizeof(data));
+               rc = _write(fd, out, sizeof(out));
                _close(fd);
             
                /* Check write */
-               if (rc == (int)sizeof(data))
+               if (rc == (int)sizeof(out))
                {
                   rc = ELCA_OK;
                }
@@ -1635,7 +1754,7 @@ static int Lock (void)
    snprintf(RootCert.CN,  sizeof(RootCert.CN),  "The root certificate \"/elca/root.crt\" could not be found.");
    snprintf(InterCert.CN, sizeof(InterCert.CN), "The intermediate certificate \"/elca/inter.crt\" could not be found.");
    
-   /* Clear key */   
+   /* Clear key */
    mbedtls_pk_free(&InterKey);
    
    return(rc);
@@ -1653,7 +1772,7 @@ static int Unlock (char *pPass)
    int                        rc;
    size_t                     PassLen = strlen(pPass);
    int                        fd;
-   static mbedtls_aes_context ctx;
+   uint8_t                    out[AES_DATA_BYTES_CNT];
    static uint8_t             data[AES_DATA_BYTES_CNT];
 
 
@@ -1672,17 +1791,12 @@ static int Unlock (char *pPass)
    _close(fd);
          
    /* Decrypt the key */
-   mbedtls_aes_init(&ctx);
-   mbedtls_aes_setkey_dec(&ctx, ELCAKey, (ELCA_KEY_LEN*8));
-   rc = mbedtls_aes_crypt_ecb(&ctx, MBEDTLS_AES_DECRYPT, 
-                              (uint8_t*)data,
-                              (uint8_t*)data);
-   mbedtls_aes_free(&ctx);
+   rc = AesEcbCrypt(ELCAKey, 0, data, out);
 
    if (rc != 0) GOTO_END(ELCA_ERR_PASS_WRONG);
          
    /* Compare the key */
-   if (memcmp(data, ELCATest, sizeof(ELCATest)) != 0) GOTO_END(ELCA_ERR_PASS_WRONG);
+   if (memcmp(out, ELCATest, sizeof(ELCATest)) != 0) GOTO_END(ELCA_ERR_PASS_WRONG);
 
    /* The key is correct, unlock the ELCA now */   
    rc = ELCAUnlock();
@@ -2511,30 +2625,56 @@ static const CGI_LIST_ENTRY CGIList[] =
 /*************************************************************************/
 static void HandleCRTReq (elca_msg_t *pRxMsg, elca_msg_t *pTxMsg)
 {
-   int                 rc = ELCA_RPC_ERROR;
-   mbedtls_aes_context ctx;
-   uint8_t             Key[32];
+   int                                 rc = ELCA_RPC_ERROR;
+   psa_status_t                        status;
+   psa_key_derivation_operation_t      Derive = PSA_KEY_DERIVATION_OPERATION_INIT;
+   uint8_t                             Key[32];
+   uint8_t                             IV[ELCA_RPC_RAND_SIZE];
+   static uint8_t                      CSR[ELCA_RPC_CSR_SIZE];
    
    /* Check if ELCA is unlocked */ 
    if (nELCAStatus != STATUS_UNLOCKED) GOTO_END(ELCA_RPC_ERR_LOCKED);
 
    /* Create AES key */
-   rc = mbedtls_pkcs5_pbkdf2_hmac_ext(MBEDTLS_MD_SHA256, 
-                                  (uint8_t*)PSK, strlen((char*)PSK), 
-                                  NULL, 0,
-                                  4096,
-                                  sizeof(Key), Key);
-   if (rc != 0) GOTO_END(ELCA_RPC_ERR_CRT_GEN);
+   status = psa_key_derivation_setup(&Derive,
+                                     PSA_ALG_PBKDF2_HMAC(PSA_ALG_SHA_256));
+   if (status == PSA_SUCCESS)
+   {
+      status = psa_key_derivation_input_integer(&Derive,
+                                                PSA_KEY_DERIVATION_INPUT_COST,
+                                                4096);
+   }
+
+   if (status == PSA_SUCCESS)
+   {
+      /* The empty salt must be provided, to keep the ELCA RPC format */
+      status = psa_key_derivation_input_bytes(&Derive,
+                                              PSA_KEY_DERIVATION_INPUT_SALT,
+                                              NULL, 0);
+   }
+
+   if (status == PSA_SUCCESS)
+   {
+      status = psa_key_derivation_input_bytes(&Derive,
+                                              PSA_KEY_DERIVATION_INPUT_PASSWORD,
+                                              PSK, strlen((char*)PSK));
+   }
+
+   if (status == PSA_SUCCESS)
+   {
+      status = psa_key_derivation_output_bytes(&Derive, Key, sizeof(Key));
+   }
+
+   /* In the finished or error state, abort is always safe */
+   psa_key_derivation_abort(&Derive);
+
+   if (status != PSA_SUCCESS) GOTO_END(ELCA_RPC_ERR_CRT_GEN);
    
    /* Decode CSR data */
-   mbedtls_aes_init(&ctx);
-   mbedtls_aes_setkey_dec(&ctx, Key, (sizeof(Key)*8));
-   rc = mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_DECRYPT, 
-                              (size_t)pRxMsg->Data.cGetCRT.CSRLen,
-                              pRxMsg->Data.cGetCRT.Random,
-                              (uint8_t*)pRxMsg->Data.cGetCRT.CSR,
-                              (uint8_t*)pRxMsg->Data.cGetCRT.CSR);
-   mbedtls_aes_free(&ctx);
+   memcpy(IV, pRxMsg->Data.cGetCRT.Random, ELCA_RPC_RAND_SIZE);
+   memset(CSR, 0x00, sizeof(CSR));
+   rc = AesCbcCrypt(Key, 0, IV, (uint8_t*)pRxMsg->Data.cGetCRT.CSR,
+                    CSR, pRxMsg->Data.cGetCRT.CSRLen);
    memset(Key, 0x00, sizeof(Key));
    if (rc != 0) GOTO_END(-1);
 
@@ -2542,7 +2682,7 @@ static void HandleCRTReq (elca_msg_t *pRxMsg, elca_msg_t *pTxMsg)
    tal_CPURngHardwarePoll(pTxMsg->Data.rGetCRT.Random, ELCA_RPC_RAND_SIZE);
 
    /* Create the CRT */   
-   rc = CRTCreate((char*)pRxMsg->Data.cGetCRT.CSR,
+   rc = CRTCreate((char*)CSR,
                   (char*)pTxMsg->Data.rGetCRT.CRT, 
                   ELCA_RPC_CRT_SIZE, 
                   0,

@@ -1,5 +1,5 @@
 /**************************************************************************
-*  Copyright (c) 2020 by Michael Fischer (www.emb4fun.de).
+*  Copyright (c) 2020-2026 by Michael Fischer (www.emb4fun.de).
 *  All rights reserved.
 *
 *  Redistribution and use in source and binary forms, with or without 
@@ -111,6 +111,11 @@
 #ifndef IP_DEFAULT_OPT_SYSL
 #define IP_DEFAULT_OPT_SYSL         1
 #endif
+
+#ifndef IP_DEFAULT_OPT_SSL
+#define IP_DEFAULT_OPT_SSL          0
+#endif
+
 
 /**************************************************************************
 *  Macro Definitions

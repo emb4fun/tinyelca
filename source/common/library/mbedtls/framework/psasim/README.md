@@ -1,60 +1,46 @@
 # psasim
 
-This tool simulates a PSA Firmware Framework implementation.
-It allows you to develop secure partitions and their clients on a desktop computer.
-It should be able to run on all systems that support POSIX and System V IPC:
-e.g. macOS, Linux, FreeBSD, and perhaps Windows 10 WSL2.
+PSASIM holds necessary C source and header files which allows to test Mbed TLS in a "pure crypto client" scenario, i.e `MBEDTLS_PSA_CRYPTO_CLIENT && !MBEDTLS_PSA_CRYPTO_C`.
+In practical terms it means that this allow to build PSASIM with Mbed TLS sources and get 2 Linux applications, a client and a server, which are connected through Linux's shared memeory, and in which the client relies on the server to perform all PSA Crypto operations.
 
-Please note that the code in this directory is maintained by the Mbed TLS / PSA Crypto project solely for the purpose of testing the use of Mbed TLS with client/service separation. We do not recommend using this code for any other purpose. In particular:
+The goal of PSASIM is _not_ to provide a ready-to-use solution for anyone looking to implement the pure crypto client structure (see [Limitations](#limitations) for details), but to provide an example of TF-PSA-Crypto RPC (Remote Procedure Call) implementation using Mbed TLS.
 
-* This simulator is not intended to pass or demonstrate compliance.
-* This code is only intended for simulation and does not have any security goals. It does not isolate services from clients.
+## Limitations
+
+In the current implementation:
+
+- Only Linux PC is supported.
+- There can be only 1 client connected to 1 server.
+- Shared memory is the only communication medium allowed. Others can be implemented (ex: net sockets), but in terms of simulation speed shared memory proved to be the fastest.
+- Server is not secure at all: keys and operation structs are stored on the RAM, so they can easily be dumped.
 
 ## Building
 
-To build and run the test program make sure you have `make`, `python` and a
-C compiler installed and then enter the following commands:
+### Build tooling
 
-```sh
-make install
-make run
-```
+Building PSASIM requires the following tools:
 
-On Linux you may need to run `ldconfig` to ensure the library is properly installed.
+* GNU make.
+* A C compiler.
+* Perl.
+* The JSON package for Perl (`cpain -i JSON` or `apt install libjson-perl`).
 
-An example pair of programs is included in the `test` directory.
+### Build instructions
 
-## Features
+The build instructions are in `framework/psasim/Makefile`, with the assistance of `scripts/crypto-common.make` in TF-PSA-Crypto. The main targets are:
 
-The implemented API is intended to be compliant with PSA-FF 1.0.0 with the exception of a couple of things that are a work in progress:
+* `client_libs`: builds object files to be linked with a client. The client code is expected to include TF-PSA-Crypto with `MBEDTLS_PSA_CRYPTO_CLIENT` enabled and `MBEDTLS_PSA_CRYPTO_C` disabled, with no local cryptographic primitives.
+* `test/psa_server`: builds a server, including the crypto partition. This requires TF-PSA-Crypto compiled with the PSA core (`MBEDTLS_PSA_CRYPTO_C`) and cryptographic primitives.
 
-* `psa_notify` support
-* "strict" policy in manifest
+Note in particular that the client and the server require different builds of `libtfpsacrypto`, since they must have different configurations.
 
-The only supported "interrupts" are POSIX signals, which act
-as a "virtual interrupt".
+Note that at the time of writing, building PSASIM only officially works from an Mbed TLS tree. It might not work from a standalone TF-PSA-Crypto tree.
 
-The standard PSA RoT APIs are not included (e.g. cryptography, attestation, lifecycle etc).
+Some C files are generated from JSON data and from parsing TF-PSA-Crypto header files, using the scripts `src/psa_sim_generate.pl` and `src/psa_sim_serialise.pl`. They are not committed into version control, but rather generated during the build of the client or the server, according to the instructions in the makefile.
 
-## Design
+### Testing
 
-The code is designed to be readable rather than fast or secure.
-In this implementation only one message is delivered to a
-RoT service at a time.
-The code is not thread-safe.
+Please refer to [`tests/scripts/components-psasim.sh` in Mbed TLS](https://github.com/Mbed-TLS/mbedtls/blob/development/tests/scripts/components-psasim.sh) and the `helper_psasim_xxx` auxiliary functions in [`framework/scripts/all-helpers.sh`](../scripts/all-helpers.sh) for guidance on how to build & test PSASIM:
 
-To debug the simulator enable the debug flag:
-
-```sh
-make DEBUG=1 install
-```
-
-## Unsupported features
-
-Because this is a simulator there are a few things that
-can't be reasonably emulated:
-
-* Manifest MMIO regions are unsupported
-* Manifest priority field is ignored
-* Partition IDs are in fact POSIX `pid_t`, which are only assigned at runtime,
-  making it infeasible to populate pid.h with correct values.
+- `component_test_psasim()`: builds the server and a couple of test clients which are used to evaluate some basic PSA Crypto API commands.
+- `component_test_suite_with_psasim()`: builds the server and _all_ the usual test suites (those found under the `<mbedtls-root>/tests/suites/*` folder) which are used by the CI and runs them. A small subset of test suites (`test_suite_constant_time_hmac`,`test_suite_lmots`,`test_suite_lms`) are being skipped, for CI turnover time optimization. They can be run locally if required.

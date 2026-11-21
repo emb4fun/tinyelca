@@ -1,5 +1,5 @@
 /**************************************************************************
-*  Copyright (c) 2019-2024 by Michael Fischer (www.emb4fun.de).
+*  Copyright (c) 2019-2026 by Michael Fischer (www.emb4fun.de).
 *  All rights reserved.
 *
 *  Redistribution and use in source and binary forms, with or without 
@@ -48,8 +48,8 @@
 #define PROJECT_NAME_LONG     "TinyELCA"
 
 #define PROJECT_VER_MAJOR     1
-#define PROJECT_VER_MINOR_1   1
-#define PROJECT_VER_MINOR_2   4
+#define PROJECT_VER_MINOR_1   2
+#define PROJECT_VER_MINOR_2   0
 
 #define PROJECT_VER_NUMBER    ((PROJECT_VER_MAJOR * 100) + (PROJECT_VER_MINOR_1 * 10) + PROJECT_VER_MINOR_2)
 

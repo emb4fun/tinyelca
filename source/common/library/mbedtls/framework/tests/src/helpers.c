@@ -3,9 +3,12 @@
  *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
  */
 
+#include "test_common.h"
+
 #include <test/constant_flow.h>
 #include <test/helpers.h>
 #include <test/macros.h>
+#include <errno.h>
 #include <string.h>
 
 #if defined(MBEDTLS_PSA_INJECT_ENTROPY)
@@ -265,6 +268,16 @@ void mbedtls_test_set_mutex_usage_error(const char *msg)
 }
 #endif // #if defined(MBEDTLS_TEST_MUTEX_USAGE)
 
+int mbedtls_test_buffer_is_all_zero(const uint8_t *buf, size_t size)
+{
+    for (size_t i = 0; i < size; i++) {
+        if (buf[i] != 0) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 #if defined(MBEDTLS_BIGNUM_C)
 
 unsigned mbedtls_test_get_case_uses_negative_0(void)
@@ -447,6 +460,28 @@ void mbedtls_test_info_reset(void)
 #endif /* MBEDTLS_THREADING_C */
 }
 
+void mbedtls_test_info_save(mbedtls_test_info_t *out)
+{
+#ifdef MBEDTLS_THREADING_C
+    mbedtls_mutex_lock(&mbedtls_test_info_mutex);
+#endif /* MBEDTLS_THREADING_C */
+    memcpy(out, &mbedtls_test_info, sizeof(mbedtls_test_info));
+#ifdef MBEDTLS_THREADING_C
+    mbedtls_mutex_unlock(&mbedtls_test_info_mutex);
+#endif /* MBEDTLS_THREADING_C */
+}
+
+void mbedtls_test_info_overwrite(const mbedtls_test_info_t *replacement)
+{
+#ifdef MBEDTLS_THREADING_C
+    mbedtls_mutex_lock(&mbedtls_test_info_mutex);
+#endif /* MBEDTLS_THREADING_C */
+    memcpy(&mbedtls_test_info, replacement, sizeof(mbedtls_test_info));
+#ifdef MBEDTLS_THREADING_C
+    mbedtls_mutex_unlock(&mbedtls_test_info_mutex);
+#endif /* MBEDTLS_THREADING_C */
+}
+
 int mbedtls_test_equal(const char *test, int line_no, const char *filename,
                        unsigned long long value1, unsigned long long value2)
 {
@@ -559,6 +594,31 @@ int mbedtls_test_le_s(const char *test, int line_no, const char *filename,
 #endif /* MBEDTLS_THREADING_C */
 
     return 0;
+}
+
+void mbedtls_test_fail_errno(const char *test,
+                             int line_no, const char *filename)
+{
+#ifdef MBEDTLS_THREADING_C
+    mbedtls_mutex_lock(&mbedtls_test_info_mutex);
+#endif /* MBEDTLS_THREADING_C */
+
+    /* Don't use accessor, we already hold mutex. */
+    if (mbedtls_test_info.result != MBEDTLS_TEST_RESULT_FAILED) {
+        /* If we've already recorded the test as having failed then don't
+         * overwrite any previous information about the failure. */
+
+        char buf[MBEDTLS_TEST_LINE_LENGTH];
+        mbedtls_test_fail_internal(test, line_no, filename);
+        (void) mbedtls_snprintf(buf, sizeof(buf),
+                                "errno = %d (%s)",
+                                errno, strerror(errno));
+        mbedtls_test_set_line1_internal(buf);
+    }
+
+#ifdef MBEDTLS_THREADING_C
+    mbedtls_mutex_unlock(&mbedtls_test_info_mutex);
+#endif /* MBEDTLS_THREADING_C */
 }
 
 int mbedtls_test_unhexify(unsigned char *obuf,

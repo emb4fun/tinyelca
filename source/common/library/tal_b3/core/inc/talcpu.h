@@ -1,7 +1,7 @@
 /**************************************************************************
 *  This file is part of the TAL project (Tiny Abstraction Layer)
 *
-*  Copyright (c) 2013-2023 by Michael Fischer (www.emb4fun.de).
+*  Copyright (c) 2013-2026 by Michael Fischer (www.emb4fun.de).
 *  All rights reserved.
 *
 *  Redistribution and use in source and binary forms, with or without
@@ -51,7 +51,7 @@
 /*
  * Check for Cortex-M and Cortex-M0 style CPU
  */
-#if defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_6M__)
+#if defined(__ARM_ARCH_7EM__) || defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_8M_MAINLINE__)
 #include "talcpu_cm.h"
 #endif
 
@@ -66,10 +66,11 @@
 *  Global Definitions
 **************************************************************************/
 
-#if !defined(soc_cv_av)
+#if !defined(soc_cv_av) && !defined(soc_zynq_7000)
 typedef void (*tal_irq_fnt)(void);
 #else
-typedef void (*tal_irq_fnt)(uint32_t IRQ, void *Context);
+//typedef void (*tal_irq_fnt)(uint32_t IRQ, void *Context);
+typedef void (*tal_irq_fnt)(void *Context);
 #endif
 
 /**************************************************************************
@@ -94,7 +95,7 @@ void       tal_CPUIrqDisable (int IRQ);
 void       tal_CPUIrqDisableAll (void);
 void       tal_CPUIrqSetPriority (int IRQ, int Priority);
 
-#if !defined(soc_cv_av)
+#if !defined(soc_cv_av) && !defined(soc_zynq_7000)
 void       tal_CPUIrqSetFunction (int IRQ, tal_irq_fnt Function);
 #else
 void       tal_CPUIrqSetFunction (int IRQ, tal_irq_fnt Function, void *Context);
@@ -103,10 +104,12 @@ void       tal_CPUIrqSetFunction (int IRQ, tal_irq_fnt Function, void *Context);
 uint32_t   tal_CPUStatGetHiResPeriod (void);
 uint32_t   tal_CPUStatGetHiResCnt (void);
 
+uint32_t   tal_CPUGetFrequencyARMPLL (void);
+uint32_t   tal_CPUGetFrequencyIOPLL (void);
 uint32_t   tal_CPUGetFrequencyCPU (void);
 
-void       tal_CPURngInit (void);
-void       tal_CPURngDeInit (void);
+TAL_RESULT tal_CPURngInit (void);
+TAL_RESULT tal_CPURngDeInit (void);
 TAL_RESULT tal_CPURngHardwarePoll (uint8_t *pData, uint32_t dSize);
 
 void       tal_CPUReboot (void);

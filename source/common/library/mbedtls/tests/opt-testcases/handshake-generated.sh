@@ -727,7 +727,7 @@ run_test    "Handshake defragmentation on server: len=3, TLS 1.3" \
             "$P_SRV debug_level=4 auth_mode=required" \
             "$O_NEXT_CLI -tls1_3 -allow_no_dhe_kex -split_send_frag 3 -cert $DATA_FILES_PATH/server5.crt -key $DATA_FILES_PATH/server5.key" \
             1 \
-            -s "<= parse client hello" \
+            -s "=> parse client hello" \
             -s "handshake message too short: 3" \
             -s "SSL - An invalid SSL record was received"
 
@@ -737,7 +737,7 @@ run_test    "Handshake defragmentation on server: len=3, TLS 1.2 with 1.3 suppor
             "$P_SRV debug_level=4 auth_mode=required" \
             "$O_NEXT_CLI -tls1_2 -allow_no_dhe_kex -split_send_frag 3 -cert $DATA_FILES_PATH/server5.crt -key $DATA_FILES_PATH/server5.key" \
             1 \
-            -s "<= parse client hello" \
+            -s "=> parse client hello" \
             -s "handshake message too short: 3" \
             -s "SSL - An invalid SSL record was received"
 

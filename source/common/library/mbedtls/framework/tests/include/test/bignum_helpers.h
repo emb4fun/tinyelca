@@ -13,11 +13,15 @@
 #ifndef TEST_BIGNUM_HELPERS_H
 #define TEST_BIGNUM_HELPERS_H
 
-#include <mbedtls/build_info.h>
+#include "build_info.h"
 
 #if defined(MBEDTLS_BIGNUM_C)
 
+#if !defined(MBEDTLS_VERSION_MAJOR) || MBEDTLS_VERSION_MAJOR >= 4
+#include <mbedtls/private/bignum.h>
+#else
 #include <mbedtls/bignum.h>
+#endif
 #include <bignum_mod.h>
 
 /** Allocate and populate a core MPI from a test case argument.

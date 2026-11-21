@@ -1902,12 +1902,17 @@ mdns_handle_response(struct mdns_packet *pkt, struct netif *netif)
           u16_t values[3];        /* SRV: Prio, Weight, Port */
           struct mdns_domain dom; /* PTR & SRV: Domain (uncompressed) */
         } data;
-        u16_t off = (ans.info.type == DNS_RRTYPE_SRV ? 6 : 0);
-        u16_t len = mdns_readname(pkt->pbuf, ans.rd_offset + off, &data.dom);
+        u16_t off, len;
+        off = (ans.info.type == DNS_RRTYPE_SRV ? 6 : 0);
+        if (ans.rd_length < off) {
+          /* An SRV record must include its 6-byte fixed header. */
+          break;
+        }
+        len = mdns_readname(pkt->pbuf, ans.rd_offset + off, &data.dom);
         if (len == MDNS_READNAME_ERROR) {
+          u16_t copy_len = LWIP_MIN(MDNS_DOMAIN_MAXLEN, (u16_t)(ans.rd_length - off));
           /* Ensure result_fn is called anyway, just copy failed domain as is */
-          data.dom.length = ans.rd_length - off;
-          memcpy(&data.dom, (const char *)p->payload + offset + off, data.dom.length);
+          data.dom.length = pbuf_copy_partial(p, data.dom.name, copy_len, offset + off);
         }
         /* Adjust len/off according RR type */
         if (ans.info.type == DNS_RRTYPE_SRV) {

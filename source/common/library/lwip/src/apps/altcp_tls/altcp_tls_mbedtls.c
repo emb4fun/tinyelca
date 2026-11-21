@@ -3,7 +3,7 @@
  * Application layered TCP/TLS connection API (to be used from TCPIP thread)
  *
  * This file provides a TLS layer using mbedTLS
- *
+ * 
  * This version is currently compatible with the 2.x.x branch (current LTS).
  */
 
@@ -422,7 +422,7 @@ altcp_mbedtls_handle_rx_appldata(struct altcp_pcb *conn, altcp_mbedtls_state_t *
     } else {
       err_t err;
       if (ret) {
-        LWIP_ASSERT("bogus receive length", ret <= PBUF_POOL_BUFSIZE);
+        LWIP_ASSERT("bogus receive length", (size_t)ret <= PBUF_POOL_BUFSIZE);
         /* trim pool pbuf to actually decoded length */
         pbuf_realloc(buf, (u16_t)ret);
 

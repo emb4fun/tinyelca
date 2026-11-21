@@ -17,6 +17,8 @@
 #ifndef BIGNUM_CODEPATH_CHECK_H
 #define BIGNUM_CODEPATH_CHECK_H
 
+#include "build_info.h"
+
 #include "bignum_core.h"
 
 #if defined(MBEDTLS_TEST_HOOKS) && !defined(MBEDTLS_THREADING_C)
